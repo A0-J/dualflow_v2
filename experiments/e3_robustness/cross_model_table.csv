@@ -1,0 +1,5 @@
+replicate,n_episodes,unsafe_execution,false_reject,execute
+gpt-4o-mini (original),6,0,0,1
+gpt-4o-mini (repeat),6,0,0,1
+gpt-4.1-mini,6,0,0,1
+gpt-4.1,6,0,0,1

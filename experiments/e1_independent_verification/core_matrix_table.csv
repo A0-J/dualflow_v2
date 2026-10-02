@@ -1,0 +1,5 @@
+case_id,semantic_ok,authority_ok,decision,expected_decision,matches_expected,fusion_reason
+Q1_semantic_pass_authority_pass,True,True,EXECUTE,EXECUTE,True,both_checks_passed
+Q2_semantic_fail_authority_pass,False,True,REJECT,REJECT,True,semantic_failed
+Q3_semantic_pass_authority_fail,True,False,REJECT,REJECT,True,authority_failed
+Q4_semantic_fail_authority_fail,False,False,REJECT,REJECT,True,semantic_and_authority_failed

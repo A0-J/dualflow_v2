@@ -38,10 +38,17 @@ def evaluate_arm(name, proposal, truth, budget, samples, threshold):
     elif name == "grounded":
         gv = grounded_verdict(proposal, samples, threshold=threshold)
         semantic_ok = gv.passed
+
+        def _json_safe(value):
+            # The "condition" facet's mode is a frozenset[str] (2026-10,
+            # multi-condition model) -- every other facet's mode is a
+            # plain str. json.dumps can't serialize a frozenset directly.
+            return sorted(value) if isinstance(value, frozenset) else value
+
         semantic_detail = {
             "facets": {
                 k: {
-                    "value": v.value,
+                    "value": _json_safe(v.value),
                     "entropy": v.entropy,
                     "confirmed": v.confirmed,
                 }

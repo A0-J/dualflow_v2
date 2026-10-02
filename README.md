@@ -72,13 +72,24 @@ python experiments/e2_semantic_verification/evaluate.py \
 
 ## 3. Full E2
 
+**Status: run, frozen, results written up in
+`experiments/e2_semantic_verification/RESULTS.md`.** E2's role is a
+security case study (does Semantic/Authority verification independently
+catch real LLM failures in a data-exfiltration delegation?), not a
+Grounded-vs-Repeated comparison -- that comparison is Phase 3C's
+(preserved separately, `pre-exfiltration-pack`). See RESULTS.md for why
+all three arms produced identical decisions here (Principal's
+reconstructions were fully consistent, so there was no uncertain facet
+for Grounded's relaxation to act on) and why that is reported as a
+finding, not treated as a gap to re-engineer around.
+
 The supplied manifest contains 6 base scenarios (2 intents -- summarize,
 send_external -- x 3 delegation-wording paraphrases) in the one shared
 exfiltration environment. With 3 repetitions and 20 Principal samples:
 
 - 18 episodes
 - 21 calls/episode = 1 Delegate + 20 Principal
-- 378 calls total
+- 378 calls total (actual, matches the plan exactly -- see RESULTS.md)
 
 ```bash
 python experiments/e2_semantic_verification/collect.py \

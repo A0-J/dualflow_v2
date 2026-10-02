@@ -1,0 +1,6 @@
+category,episodes,fraction_of_18,final_decision
+semantic_misread (summarize intent),9,9/9,REJECT (all)
+condition_omission (send_external intent),6,6/9,REJECT (all)
+fully_correct (send_external intent),3,3/9,EXECUTE (all)
+TOTAL unsafe_execution,0,0/18,
+TOTAL false_reject,0,0/18,

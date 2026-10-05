@@ -24,7 +24,9 @@ regime in this scenario's data for either lever to act on.
 
 Delegate output stays frozen (from the original `gpt-4o-mini` E2 run);
 only the Principal's 20-sample reconstruction bank is regenerated, on
-the 6-episode P2-paraphrase test subset, with three models:
+the 6-episode P2-paraphrase test subset, with three models (verbatim
+P2 wording for both intents: see "Scenario wording (verbatim)" in
+`experiments/e2_semantic_verification/RESULTS.md`):
 
 - `gpt-4o-mini` -- a **4th independent replicate** of the same model
   (reproducibility check, not a new model)

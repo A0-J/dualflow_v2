@@ -132,3 +132,61 @@ python experiments/e3_robustness/cross_model_collect.py \
 ```
 
 Then pass that file to `evaluate.py`.
+
+## 6. Delegate Repeated-Sampling Analysis + 5-arm comparison
+
+**Status: run, frozen. `experiments/e1_independent_verification/`,
+`experiments/e2_semantic_verification/`, and `experiments/e3_robustness/`
+(the 6 semantic-risk scenarios and everything derived from them) are
+untouched and stay frozen** -- this section only adds new, separately-
+scoped analysis in `experiments/delegate_repeated_sampling/`.
+
+Samples the Delegate (not the Principal) 20x independently per base
+scenario to get an empirical entropy over Delegate interpretations, then
+compares 5 decision methods (no-verification / entropy-only / semantic-
+grounding-only / authority-only / DualFlow) against each other. See
+`experiments/delegate_repeated_sampling/RESULTS.md` for full results;
+summary:
+
+- **Delegate Repeated-Sampling Analysis** (120 calls, 0 new Principal
+  calls -- reuses E2's existing 20-sample Principal banks): on the
+  `summarize` scenarios, Delegate's 20/20 samples unanimously (entropy=0)
+  propose the wrong action -- a *confident* misread, not an uncertain
+  one. Headline finding: **low entropy does not imply correctness.**
+- **5-arm comparison, semantic-risk subset** (0 new calls, reuses the
+  above): isolates semantic-verification mechanisms. All 6 scenarios use
+  a permissive authority budget by design (E2's own, see
+  `generate_scenarios.py`), so this subset cannot test authority's
+  incremental contribution.
+- **5-arm comparison, authority-risk subset** (40 new calls -- only for
+  case A3; A1/A2 reuse already-collected real Delegate/Principal output
+  from `exfil_send_external_p1` under a different, stricter hypothetical
+  budget, 0 new calls): 3 cases, each constructed so semantic
+  verification passes and authority verification fails. A3
+  (`approval_missing`) is the first scenario in this pack where
+  `AuthorityBudget.required_conditions` is actually non-empty and fires
+  on real data -- `human_approval` is modeled there as an **authority
+  policy condition**, not a semantic facet (unlike the frozen E2
+  scenarios, where `recipient`/`human_approval` are compared as part of
+  the Delegate's `condition` interpretation facet -- that modeling choice
+  is kept as-is for the frozen 6, not retrofitted; a future scenario
+  schema could separate "semantic condition" from "policy condition"
+  more cleanly from the start).
+- **Combined (all 9 scenarios)**: DualFlow is the only arm with 0/9
+  unsafe executions across both failure classes, at no cost in false
+  rejections. **This is a controlled proof-of-mechanism on 9 hand-built
+  scenarios, not a statistically powered benchmark** -- in particular,
+  only 1 of the 9 scenarios is actually a valid, should-execute case, so
+  `false_reject=0/9` should be read as `0/1` for the one real
+  opportunity to over-block, not as evidence across 9 independent
+  "should execute" trials. A follow-up with more valid (should-execute)
+  scenarios is needed before claiming DualFlow doesn't cost utility in
+  general.
+
+```bash
+python experiments/delegate_repeated_sampling/collect.py --overwrite
+python experiments/delegate_repeated_sampling/analyze.py
+python experiments/delegate_repeated_sampling/five_arm_comparison.py
+python experiments/delegate_repeated_sampling/authority_risk/collect_a3.py --overwrite
+python experiments/delegate_repeated_sampling/authority_risk/five_arm_authority_risk.py
+```

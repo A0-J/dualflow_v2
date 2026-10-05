@@ -1,0 +1,6 @@
+arm,n,unsafe,false_reject,correct_execute
+no_verification,9,8,0,1
+entropy_only,9,4,0,1
+semantic_grounding_only,9,3,0,1
+authority_only,9,5,0,1
+dualflow,9,0,0,1

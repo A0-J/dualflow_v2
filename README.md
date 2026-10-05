@@ -172,16 +172,36 @@ summary:
   is kept as-is for the frozen 6, not retrofitted; a future scenario
   schema could separate "semantic condition" from "policy condition"
   more cleanly from the start).
-- **Combined (all 9 scenarios)**: DualFlow is the only arm with 0/9
-  unsafe executions across both failure classes, at no cost in false
-  rejections. **This is a controlled proof-of-mechanism on 9 hand-built
-  scenarios, not a statistically powered benchmark** -- in particular,
-  only 1 of the 9 scenarios is actually a valid, should-execute case, so
-  `false_reject=0/9` should be read as `0/1` for the one real
-  opportunity to over-block, not as evidence across 9 independent
-  "should execute" trials. A follow-up with more valid (should-execute)
-  scenarios is needed before claiming DualFlow doesn't cost utility in
-  general.
+- **Combined safety result (S1-S5, A1-A3, V1 -- 9 scenarios, frozen)**:
+  DualFlow is the only arm with 0/9 unsafe executions across both
+  failure classes. At 9 scenarios only 1 is a valid, should-execute
+  case, so `false_reject` wasn't yet meaningful -- see the next bullet.
+- **Valid scenarios V2-V5** (160 new calls) were added specifically to
+  measure false rejection properly: 4 more Semantic-PASS/Authority-PASS/
+  Expected-EXECUTE cases, verified correct by construction on real data.
+  **Result: DualFlow false-rejects 1/5** (`valid_summarize_redacted`) --
+  not zero. Diagnosed, not hidden: two individually sub-threshold noise
+  sources (a `scope` slip, a `condition` hallucination) combine in the
+  whole-interpretation entropy to cross 0.8, even though the
+  decision-relevant `action` facet never wavered.
+- **Full 13-scenario combined**: unsafe 0/13 (DualFlow only),
+  false_reject 1/5 valid (DualFlow and entropy-only), correctly
+  denominated against the 5 valid scenarios, not all 13. DualFlow trades
+  a small, measured utility cost for safety across both failure classes
+  -- `semantic_grounding_only` achieves 0/5 false rejects but misses the
+  3/13 authority-risk unsafe cases DualFlow catches.
+- **N-sampling robustness** (0 new calls, reuses the 20-sample Delegate
+  banks): `action` facet entropy is trivially 0 at every N in
+  {3,5,10,15,20} (fully unanimous already); `condition` facet (which has
+  real disagreement) shows the modal value actually flip at small N in
+  2/35 cells before settling at N=20 -- concrete support for using N=20
+  rather than fewer samples.
+
+For exact scenario wording, agent roles, authority budgets, and
+per-scenario interpretation distributions (all 13 scenarios), see
+`experiments/delegate_repeated_sampling/SCENARIOS.md` -- the single
+source of truth for scenario specification; this README and RESULTS.md
+report results only.
 
 ```bash
 python experiments/delegate_repeated_sampling/collect.py --overwrite
@@ -189,4 +209,7 @@ python experiments/delegate_repeated_sampling/analyze.py
 python experiments/delegate_repeated_sampling/five_arm_comparison.py
 python experiments/delegate_repeated_sampling/authority_risk/collect_a3.py --overwrite
 python experiments/delegate_repeated_sampling/authority_risk/five_arm_authority_risk.py
+python experiments/delegate_repeated_sampling/valid_scenarios/collect.py --overwrite
+python experiments/delegate_repeated_sampling/valid_scenarios/five_arm_valid.py
+python experiments/delegate_repeated_sampling/n_sampling_robustness.py
 ```

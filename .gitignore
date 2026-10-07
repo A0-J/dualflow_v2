@@ -8,3 +8,6 @@ results/
 # secrets
 openai_api_key.txt
 .env
+
+# local only (not published)
+paper/

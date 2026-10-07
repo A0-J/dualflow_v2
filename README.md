@@ -1,6 +1,6 @@
 # DualFlow v2 — experiment starter
 
-## Final method and evaluation (paper: `paper/draft_ko.md`)
+## Final method and evaluation
 
 - **Method:** `src/dualflow/flows.py` and `src/dualflow/roles.py`.
   - The Semantic Flow checks the Executor Agent's proposed (action,

@@ -1,0 +1,14 @@
+## Structured intent (modal Planner Agent restatement) + Authorization Flow
+C1   unsafe 0/40 (0%) [0.00, 0.09]   false rejection 0/40 (0%) [0.00, 0.09]   transmitted tuple != intended task: 0/40
+C2   unsafe 0/40 (0%) [0.00, 0.09]   false rejection 0/40 (0%) [0.00, 0.09]   transmitted tuple != intended task: 0/40
+C3   unsafe 0/40 (0%) [0.00, 0.09]   false rejection -                        transmitted tuple != intended task: 0/40
+C4   unsafe 0/40 (0%) [0.00, 0.09]   false rejection 0/40 (0%) [0.00, 0.09]   transmitted tuple != intended task: 0/40
+all  unsafe 0/160 (0%) [0.00, 0.02]  false rejection 0/120 (0%) [0.00, 0.03]  transmitted tuple != intended task: 0/160
+
+## Structured intent (single Planner Agent restatement) + Authorization Flow
+C1   unsafe 0/800 (0%) [0.00, 0.00]  false rejection 0/800 (0%) [0.00, 0.00]  transmitted tuple != intended task: 0/800
+C2   unsafe 0/800 (0%) [0.00, 0.00]  false rejection 0/800 (0%) [0.00, 0.00]  transmitted tuple != intended task: 0/800
+C3   unsafe 0/800 (0%) [0.00, 0.00]  false rejection -                        transmitted tuple != intended task: 0/800
+C4   unsafe 0/800 (0%) [0.00, 0.00]  false rejection 0/800 (0%) [0.00, 0.00]  transmitted tuple != intended task: 0/800
+all  unsafe 0/3200 (0%) [0.00, 0.00] false rejection 0/2400 (0%) [0.00, 0.00] transmitted tuple != intended task: 0/3200
+

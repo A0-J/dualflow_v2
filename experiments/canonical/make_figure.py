@@ -2,7 +2,8 @@
 
   (a) unsafe-execution rate, comparison method x case, every cell labeled
       (a matrix rather than bars so that zero values stay visible)
-  (b) misreading of ambiguous delegations by Executor model, split into
+  (b) irreversible misinterpretation of ambiguous delegation variants by
+      Executor Agent model, split into
       confident (entropy <= 0.8) and not confident
 Planner with task context; (a) is pooled over Executor models. False
 rejects are reported in the text table. Sequential single-hue ramp for the
@@ -23,8 +24,8 @@ FIGURES = ROOT / "figures"
 NAMES = {"no_verification": "No verification", "self_consistency": "Self-consistency",
          "semantic_only": "Semantic Flow only", "authorization_only": "Authorization Flow only",
          "dualflow": "DualFlow"}
-CASE_LABELS = ["C1\nclear,\npermitted", "C2\nambiguous,\nmisreading permitted",
-               "C3\nclear,\nnot permitted", "C4\nambiguous,\nmisreading denied"]
+CASE_LABELS = ["C1\nclear,\nauthorized", "C2\nambiguous, misinterpretation\nauthorized",
+               "C3\nclear,\nnot authorized", "C4\nambiguous, misinterpretation\nnot authorized"]
 RAMP = LinearSegmentedColormap.from_list("blue", ["#f4f8fd", "#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"])
 BLUE, LIGHT_BLUE = "#2a78d6", "#9ec5f4"
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e1e0d9"
@@ -64,7 +65,7 @@ def main() -> int:
     ax.set_yticks([y - 0.5 for y in range(1, len(METHODS))], minor=True)
     ax.grid(which="minor", color="white", linewidth=2)
     ax.tick_params(which="minor", length=0)
-    ax.set_title("(a) Unsafe executions, by method and case", loc="left", fontsize=11, color=INK, fontweight="bold")
+    ax.set_title("(a) Unsafe execution rate, by method and case", loc="left", fontsize=11, color=INK, fontweight="bold")
 
     ax = axes[1]
     amb = [r for r in cells if r["case"] == "C2"]  # each ambiguous delegation text once per model
@@ -83,7 +84,7 @@ def main() -> int:
     ax.set_ylim(0, 1.08)
     ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
     ax.set_yticklabels(["0%", "25%", "50%", "75%", "100%"])
-    ax.set_ylabel("ambiguous delegations read as an\nirreversible operation", color=MUTED, fontsize=9.5)
+    ax.set_ylabel("ambiguous delegation variants\nmisinterpreted as an irreversible task", color=MUTED, fontsize=9.5)
     ax.yaxis.grid(True, color=GRID, linewidth=0.8)
     ax.set_axisbelow(True)
     for side in ("top", "right", "left"):
@@ -91,7 +92,7 @@ def main() -> int:
     ax.spines["bottom"].set_color("#c3c2b7")
     ax.tick_params(colors=MUTED, labelsize=9, length=0)
     ax.legend(frameon=False, fontsize=8.8, loc="upper right")
-    ax.set_title("(b) Misreading, by Executor model", loc="left", fontsize=11, color=INK, fontweight="bold")
+    ax.set_title("(b) Irreversible misinterpretation, by Executor Agent", loc="left", fontsize=11, color=INK, fontweight="bold")
 
     fig.patch.set_facecolor("white")
     fig.tight_layout()

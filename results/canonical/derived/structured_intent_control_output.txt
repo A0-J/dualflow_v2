@@ -12,3 +12,10 @@ C3   unsafe 0/800 (0%) [0.00, 0.00]  false rejection -                        tr
 C4   unsafe 0/800 (0%) [0.00, 0.00]  false rejection 0/800 (0%) [0.00, 0.00]  transmitted tuple != intended task: 0/800
 all  unsafe 0/3200 (0%) [0.00, 0.00] false rejection 0/2400 (0%) [0.00, 0.00] transmitted tuple != intended task: 0/3200
 
+## Intended task executed, where the intended task is authorized (C1, C2, C4)
+natural-language delegation + DualFlow (unit: cell = scenario x Executor Agent model, Planner Agent with context)
+  C1     159/160 (99%) [0.97, 1.00]
+  C2+C4  36/320 (11%) [0.08, 0.15]
+  DualFlow executed a non-intended task in 0 cells
+structured intent + Authorization Flow (unit: scenario): see 'false rejection' above; every transmitted tuple was the intended task
+

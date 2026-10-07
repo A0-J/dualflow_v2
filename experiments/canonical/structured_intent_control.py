@@ -55,6 +55,17 @@ def main() -> None:
                 f"transmitted tuple != intended task: {a['mismatch']}/{a['n']}")
         say()
 
+    say("## Intended task executed, where the intended task is authorized (C1, C2, C4)")
+    say("natural-language delegation + DualFlow (unit: cell = scenario x Executor Agent model, Planner Agent with context)")
+    from dualflow.io import read_jsonl
+    cells = [c for c in read_jsonl(DERIVED / "cells.jsonl") if c["planner_condition"] == "context"]
+    for label_, cases in (("C1", ("C1",)), ("C2+C4", ("C2", "C4"))):
+        sub = [c for c in cells if c["case"] in cases]
+        say(f"  {label_:6s} {fmt(sum(c['dualflow__execute'] and c['intended'] for c in sub), len(sub))}")
+    say(f"  DualFlow executed a non-intended task in {sum(c['dualflow__execute'] and not c['intended'] for c in cells)} cells")
+    say("structured intent + Authorization Flow (unit: scenario): see 'false rejection' above; every transmitted tuple was the intended task")
+    say()
+
     DERIVED.mkdir(parents=True, exist_ok=True)
     (DERIVED / "structured_intent_control_output.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

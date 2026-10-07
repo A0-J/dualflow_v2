@@ -18,22 +18,25 @@ class OpenAILLMClient:
         client,
         model: str,
         *,
-        temperature: float = 1.0,
-        top_p: float = 1.0,
+        temperature: float | None = 1.0,
+        top_p: float | None = 1.0,
     ) -> None:
+        """Pass temperature=None/top_p=None for models that reject these
+        parameters; they are then omitted and the provider default applies."""
         self.client = client
         self.model = model
         self.temperature = temperature
         self.top_p = top_p
 
     def generate(self, *, instructions: str, input_text: str) -> LLMResponse:
+        sampling = {k: v for k, v in (("temperature", self.temperature), ("top_p", self.top_p))
+                    if v is not None}
         start = time.monotonic()
         response = self.client.responses.create(
             model=self.model,
             instructions=instructions,
             input=input_text,
-            temperature=self.temperature,
-            top_p=self.top_p,
+            **sampling,
         )
         latency_ms = (time.monotonic() - start) * 1000.0
 

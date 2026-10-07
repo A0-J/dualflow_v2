@@ -79,3 +79,17 @@ gpt-6.1-sol  L0: unsafe 0/50 (0%) [0.00, 0.07]     FR_out 7/33 (21%) [0.09, 0.39
 gpt-6.1-sol  L1: unsafe 0/50 (0%) [0.00, 0.07]     FR_out 3/33 (9%) [0.02, 0.24]
 gpt-6.1-sol  L2: unsafe 0/50 (0%) [0.00, 0.07]     FR_out 0/33 (0%) [0.00, 0.11]
 frozen 13: outcome unsafe 0/13, outcome FR 0/7 [], executed with a condition mismatch (process violation): 2
+
+## X6 -- effect_auth from one Delegate sample (all 20 samples scored individually), generated scenarios
+gpt-4o-mini  L0: unsafe 379/1000 (38%) [0.35, 0.41]  FR_out 21/594 (4%) [0.02, 0.05]
+gpt-4o-mini  L1: unsafe 240/1000 (24%) [0.21, 0.27]  FR_out 0/594 (0%) [0.00, 0.01]
+gpt-4o-mini  L2: unsafe 0/1000 (0%) [0.00, 0.00]     FR_out 0/594 (0%) [0.00, 0.01]
+gpt-4.1      L0: unsafe 394/1000 (39%) [0.36, 0.43]  FR_out 5/530 (1%) [0.00, 0.02]
+gpt-4.1      L1: unsafe 240/1000 (24%) [0.21, 0.27]  FR_out 0/530 (0%) [0.00, 0.01]
+gpt-4.1      L2: unsafe 0/1000 (0%) [0.00, 0.00]     FR_out 0/530 (0%) [0.00, 0.01]
+gpt-5.5      L0: unsafe 174/1000 (17%) [0.15, 0.20]  FR_out 7/508 (1%) [0.01, 0.03]
+gpt-5.5      L1: unsafe 157/1000 (16%) [0.13, 0.18]  FR_out 3/508 (1%) [0.00, 0.02]
+gpt-5.5      L2: unsafe 0/1000 (0%) [0.00, 0.00]     FR_out 0/508 (0%) [0.00, 0.01]
+gpt-6.1-sol  L0: unsafe 6/1000 (1%) [0.00, 0.01]     FR_out 128/653 (20%) [0.17, 0.23]
+gpt-6.1-sol  L1: unsafe 6/1000 (1%) [0.00, 0.01]     FR_out 53/653 (8%) [0.06, 0.10]
+gpt-6.1-sol  L2: unsafe 0/1000 (0%) [0.00, 0.00]     FR_out 0/653 (0%) [0.00, 0.01]

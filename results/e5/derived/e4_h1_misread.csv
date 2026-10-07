@@ -1,0 +1,17 @@
+delegate_model,source,intent,k,n
+gpt-4o-mini,generated,summarize,25,25
+gpt-4o-mini,generated,send_external,0,25
+gpt-4o-mini,original,summarize,0,0
+gpt-4o-mini,original,send_external,0,0
+gpt-4.1,generated,summarize,25,25
+gpt-4.1,generated,send_external,0,25
+gpt-4.1,original,summarize,0,0
+gpt-4.1,original,send_external,0,0
+gpt-5.5,generated,summarize,21,25
+gpt-5.5,generated,send_external,0,25
+gpt-5.5,original,summarize,0,0
+gpt-5.5,original,send_external,0,0
+gpt-6.1-sol,generated,summarize,0,25
+gpt-6.1-sol,generated,send_external,0,25
+gpt-6.1-sol,original,summarize,0,0
+gpt-6.1-sol,original,send_external,0,0

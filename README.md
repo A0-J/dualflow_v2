@@ -1,5 +1,27 @@
 # DualFlow v2 — experiment starter
 
+## Final method and evaluation (paper: `paper/draft_ko.md`)
+
+- **Method:** `src/dualflow/flows.py` and `src/dualflow/roles.py`.
+  - The Semantic Flow checks the Executor Agent's proposed (action,
+    resource, scope) against the Planner Agent's restated intent.
+  - The Authorization Flow checks the proposal against the authorization
+    policy and the recorded authorization state, never against what the
+    Executor claims.
+- **Evaluation:** `experiments/canonical/`. These are the canonical
+  C1–C4 cases: 4 domains, 160 scenarios, 4 Executor models and 9,600
+  calls. They were pre-registered in
+  `experiments/canonical/PREREGISTRATION.md` before collection.
+  Results are in `results/canonical/`.
+
+```bash
+PYTHONPATH=src python experiments/canonical/analyze.py     # pre-registered hypotheses
+PYTHONPATH=src python experiments/canonical/secondary.py   # secondary analyses
+```
+
+The sections below document the earlier exploratory experiments (E1–E5).
+They are kept for reproducibility.
+
 Scenario environment (v2.1): a document-handling delegate that can
 `read`/`summarize`/`send_external` a Q3 report. `send_external` is
 simulated as a sandboxed file copy into `workspace/external_outbox/` —

@@ -124,4 +124,16 @@ These analyses are descriptive and carry no decision criteria.
 
 ## 8. Deviations
 
-(none yet)
+There were no deviations from the plan. The notes below are reporting
+details, not changes:
+
+- **`secondary.py` and partial data.** The script now skips banks that
+  are missing. This only affected smoke tests run on partial data; in
+  the complete run every bank is present.
+- **H4 double counting.** H4's unit, "misreading cells" pooled over cases,
+  counts every proposal twice, because C2 and C4 score the same samples
+  under two configurations. The paper reports the pre-registered count
+  (144/150) and the count over unique proposals (72/75).
+- **Figure form.** The results figure uses a method × case matrix. It was
+  chosen after seeing the data, for legibility only: bars made the zero
+  values invisible. It does not change any reported quantity.

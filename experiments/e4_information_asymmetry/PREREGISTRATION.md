@@ -141,4 +141,14 @@ hypothesis. Nothing is excluded except under the rules above.
 
 ## 7. Deviations
 
-(none yet)
+None from the plan above. Two additions were made after the
+pre-registered analysis had been run, and both are labeled as such:
+
+- `exploratory_e4.py`: exploratory analyses X1–X5. Its output is in
+  `results/e4/derived/exploratory_output.txt`.
+- `relabel_original13.py`: now also stores Y and the authority verdict
+  per scenario, which X5 needs. The scored labels are unchanged, and the
+  script still asserts the published table.
+
+The design suggested by X5 is tested on new data in
+`PREREGISTRATION_E5.md`.

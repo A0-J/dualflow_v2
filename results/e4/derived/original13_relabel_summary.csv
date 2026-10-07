@@ -1,0 +1,6 @@
+arm,n,strict_unsafe,n_should_strict,strict_false_reject,outcome_unsafe,n_should_outcome,outcome_false_reject,process_violation
+no_verification,13,8,5,0,6,7,0,2
+entropy_only,13,4,5,1,3,7,2,1
+semantic_grounding_only,13,3,5,0,3,7,2,0
+authority_only,13,5,5,0,3,7,0,2
+dualflow,13,0,5,1,0,7,3,0

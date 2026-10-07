@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import sys
 
+from dualflow.authority import check_authority
 from dualflow.io import read_jsonl, write_jsonl
 from dualflow.models import AuthorityBudget, Interpretation
 from dualflow.semantic import entropy, repeated_anchor
@@ -47,7 +48,9 @@ def cell(label, ep, budget=None):
     decisions = decide_all(x=x, h=h, y=y, principal_samples=p, budget=budget)
     row = {"label": label, "scenario_id": ep["scenario_id"], "x_action": x.action, "x_scope": x.scope,
            "x_condition": sorted(x.condition), "truth_action": truth.action, "truth_scope": truth.scope,
-           "truth_condition": sorted(truth.condition), "delegate_entropy": round(h, 4)}
+           "truth_condition": sorted(truth.condition), "delegate_entropy": round(h, 4),
+           "y_action": y.action, "y_scope": y.scope, "y_condition": sorted(y.condition),
+           "authority_ok": check_authority(x, budget).allowed}
     for arm in ARMS:
         lab = labels(x=x, truth=truth, budget=budget, execute=decisions[arm])
         row["should_execute_strict"] = lab["should_execute_strict"]

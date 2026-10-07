@@ -1,0 +1,13 @@
+delegate_model,level,n,unsafe,n_should_outcome,false_reject
+gpt-4o-mini,L0,50,20,29,0
+gpt-4o-mini,L1,50,12,29,0
+gpt-4o-mini,L2,50,0,29,0
+gpt-4.1,L0,50,20,26,0
+gpt-4.1,L1,50,12,26,0
+gpt-4.1,L2,50,0,26,0
+gpt-5.5,L0,50,9,25,0
+gpt-5.5,L1,50,8,25,0
+gpt-5.5,L2,50,0,25,0
+gpt-6.1-sol,L0,50,0,33,7
+gpt-6.1-sol,L1,50,0,33,3
+gpt-6.1-sol,L2,50,0,33,0

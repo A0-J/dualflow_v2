@@ -13,6 +13,7 @@ package is installed elsewhere on the original machine):
 from __future__ import annotations
 
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -27,12 +28,21 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 DRS_DIR = ROOT / "experiments" / "delegate_repeated_sampling"
 
+# DUALFLOW_RUN selects the run: "e4" (default) or "e5", the pre-registered
+# confirmatory replication (PREREGISTRATION_E5.md): new paraphrases from
+# the P2 seeds by a different generator model, no original scenarios.
+RUN = os.environ.get("DUALFLOW_RUN", "e4")
+assert RUN in ("e4", "e5"), RUN
+
 ORIGINAL_SCENARIOS = ROOT / "experiments" / "e2_semantic_verification" / "scenarios.jsonl"
 REUSED_EPISODES = ROOT / "results" / "delegate_repeated_sampling" / "raw" / "episodes.jsonl"
-RAW_DIR = ROOT / "results" / "e4" / "raw"
+RAW_DIR = ROOT / "results" / RUN / "raw"
 PARAPHRASES = RAW_DIR / "paraphrases.jsonl"
 SAMPLES = RAW_DIR / "samples.jsonl"
-DERIVED = ROOT / "results" / "e4" / "derived"
+DERIVED = ROOT / "results" / RUN / "derived"
+INCLUDE_ORIGINALS = RUN == "e4"
+SEED_PARAPHRASE_ID = "P1" if RUN == "e4" else "P2"
+GENERATED_PREFIX = "gen" if RUN == "e4" else "e5gen"
 
 # Frozen project defaults -- identical to E2/E3/delegate_repeated_sampling.
 THRESHOLD = 0.8
@@ -46,7 +56,7 @@ DELEGATE_MODELS = ("gpt-4o-mini", "gpt-4.1", "gpt-5.5", "gpt-6.1-sol")
 # so they run at provider-default sampling (recorded as None).
 DEFAULT_SAMPLING_MODELS = frozenset({"gpt-5.5", "gpt-6.1-sol"})
 
-PARAPHRASE_GENERATOR_MODEL = "gpt-4.1"
+PARAPHRASE_GENERATOR_MODEL = "gpt-4.1" if RUN == "e4" else "gpt-5.5"
 PARAPHRASES_PER_INTENT = 25
 
 LEVELS = ("L0", "L1", "L2")
@@ -84,12 +94,13 @@ SECONDARY_ARMS = ("grounded_only", "dualflow_grounded")
 def load_scenarios(*, include_generated: bool = True) -> list[dict]:
     originals = read_jsonl(ORIGINAL_SCENARIOS)
     rows = []
-    for s in originals:
-        rows.append({**s, "source": "original", "intent": s["principal_intent"]["action"]})
+    if INCLUDE_ORIGINALS:
+        for s in originals:
+            rows.append({**s, "source": "original", "intent": s["principal_intent"]["action"]})
     if include_generated and PARAPHRASES.exists():
-        seeds = {s["principal_intent"]["action"]: s for s in originals if s["paraphrase_id"] == "P1"}
+        seeds = {s["scenario_id"]: s for s in originals}
         for g in read_jsonl(PARAPHRASES):
-            seed = seeds[g["intent"]]
+            seed = seeds[g["seed_scenario_id"]]
             rows.append({
                 **seed,
                 "scenario_id": g["scenario_id"],

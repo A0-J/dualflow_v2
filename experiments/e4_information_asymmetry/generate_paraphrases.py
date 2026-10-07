@@ -17,8 +17,9 @@ from dualflow.io import read_jsonl, write_jsonl
 from dualflow.parsing import _FENCE_RE
 
 from common import (
-    ORIGINAL_SCENARIOS, PARAPHRASE_GENERATOR_MODEL, PARAPHRASES,
-    PARAPHRASES_PER_INTENT, TEMPERATURE, TOP_P,
+    DEFAULT_SAMPLING_MODELS, GENERATED_PREFIX, ORIGINAL_SCENARIOS,
+    PARAPHRASE_GENERATOR_MODEL, PARAPHRASES, PARAPHRASES_PER_INTENT,
+    SEED_PARAPHRASE_ID, TEMPERATURE, TOP_P,
 )
 
 PROMPT = """Here is a short instruction that someone gave to an assistant:
@@ -49,7 +50,8 @@ def main() -> None:
 
     originals = read_jsonl(ORIGINAL_SCENARIOS)
     seen = {_norm(s["delegation"]) for s in originals}
-    seeds = {s["principal_intent"]["action"]: s for s in originals if s["paraphrase_id"] == "P1"}
+    seeds = {s["principal_intent"]["action"]: s for s in originals if s["paraphrase_id"] == SEED_PARAPHRASE_ID}
+    sampling = {} if PARAPHRASE_GENERATOR_MODEL in DEFAULT_SAMPLING_MODELS else {"temperature": TEMPERATURE, "top_p": TOP_P}
     client = OpenAI(max_retries=8)
 
     rows = []
@@ -63,7 +65,7 @@ def main() -> None:
             r = client.responses.create(
                 model=PARAPHRASE_GENERATOR_MODEL,
                 input=PROMPT.format(seed=seed["delegation"], k=REQUEST_K),
-                temperature=TEMPERATURE, top_p=TOP_P,
+                **sampling,
             )
             calls.append(r.output_text)
             for text in json.loads(_FENCE_RE.sub("", r.output_text.strip()).strip()):
@@ -72,7 +74,7 @@ def main() -> None:
                     kept.append(text.strip())
         for i, text in enumerate(kept[:PARAPHRASES_PER_INTENT], 1):
             rows.append({
-                "scenario_id": f"gen_{intent}_{i:02d}",
+                "scenario_id": f"{GENERATED_PREFIX}_{intent}_{i:02d}",
                 "intent": intent,
                 "paraphrase_id": f"G{i:02d}",
                 "delegation": text,

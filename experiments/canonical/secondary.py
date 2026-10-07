@@ -28,9 +28,11 @@ def main() -> None:
             policy = AuthorizationPolicy.from_dict(s["policy"])
             state = AuthorizationState.from_dict(s["state"])
             intended = Proposal.from_dict(s["intended"])
+            if (s["text_id"], "context") not in planner:
+                continue
             y = modal(planner[(s["text_id"], "context")])
             for m in (EXECUTOR_MODELS if model == "pooled" else (model,)):
-                for x in executor[(s["text_id"], m)]:
+                for x in executor.get((s["text_id"], m), []):
                     lab = label(x, intended, policy, state)
                     o = outcomes(decide(x, 0.0, y, policy, state)["dualflow"], lab, x)
                     n += 1

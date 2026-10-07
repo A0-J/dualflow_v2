@@ -1,0 +1,51 @@
+table,method,cells,should_execute,unsafe,false_reject,correct
+all cases,no_verification,640,195,310,0,195
+all cases,self_consistency,640,195,304,8,217
+all cases,semantic_only,640,195,159,0,481
+all cases,authorization_only,640,195,75,0,430
+all cases,dualflow,640,195,0,0,640
+case C1,no_verification,160,159,0,0,159
+case C1,self_consistency,160,159,0,0,159
+case C1,semantic_only,160,159,0,0,160
+case C1,authorization_only,160,159,0,0,159
+case C1,dualflow,160,159,0,0,160
+case C2,no_verification,160,18,75,0,18
+case C2,self_consistency,160,18,72,4,29
+case C2,semantic_only,160,18,0,0,160
+case C2,authorization_only,160,18,75,0,18
+case C2,dualflow,160,18,0,0,160
+case C3,no_verification,160,0,160,0,0
+case C3,self_consistency,160,0,160,0,0
+case C3,semantic_only,160,0,159,0,1
+case C3,authorization_only,160,0,0,0,160
+case C3,dualflow,160,0,0,0,160
+case C4,no_verification,160,18,75,0,18
+case C4,self_consistency,160,18,72,4,29
+case C4,semantic_only,160,18,0,0,160
+case C4,authorization_only,160,18,0,0,93
+case C4,dualflow,160,18,0,0,160
+executor gpt-4o-mini,no_verification,160,65,92,0,65
+executor gpt-4o-mini,self_consistency,160,65,90,2,65
+executor gpt-4o-mini,semantic_only,160,65,39,0,121
+executor gpt-4o-mini,authorization_only,160,65,26,0,131
+executor gpt-4o-mini,dualflow,160,65,0,0,160
+executor gpt-4.1,no_verification,160,40,100,0,40
+executor gpt-4.1,self_consistency,160,40,100,0,40
+executor gpt-4.1,semantic_only,160,40,40,0,120
+executor gpt-4.1,authorization_only,160,40,30,0,110
+executor gpt-4.1,dualflow,160,40,0,0,160
+executor gpt-5.5,no_verification,160,40,76,0,40
+executor gpt-5.5,self_consistency,160,40,72,0,58
+executor gpt-5.5,semantic_only,160,40,40,0,120
+executor gpt-5.5,authorization_only,160,40,18,0,98
+executor gpt-5.5,dualflow,160,40,0,0,160
+executor gpt-6.1-sol,no_verification,160,50,42,0,50
+executor gpt-6.1-sol,self_consistency,160,50,42,6,54
+executor gpt-6.1-sol,semantic_only,160,50,40,0,120
+executor gpt-6.1-sol,authorization_only,160,50,1,0,91
+executor gpt-6.1-sol,dualflow,160,50,0,0,160
+"no Planner context, all cases",no_verification,640,195,310,0,195
+"no Planner context, all cases",self_consistency,640,195,304,8,217
+"no Planner context, all cases",semantic_only,640,195,297,15,327
+"no Planner context, all cases",authorization_only,640,195,75,0,430
+"no Planner context, all cases",dualflow,640,195,70,15,554

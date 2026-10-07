@@ -21,7 +21,7 @@ from analyze import CASES, METHODS
 from common import DERIVED, EXECUTOR_MODELS, ROOT, THRESHOLD
 
 FIGURES = ROOT / "figures"
-NAMES = {"no_verification": "No verification", "self_consistency": "Self-consistency",
+NAMES = {"no_verification": "No verification", "self_consistency": "Consistency-based Gate",
          "semantic_only": "Semantic Flow only", "authorization_only": "Authorization Flow only",
          "dualflow": "DualFlow"}
 CASE_LABELS = ["C1\nclear,\nauthorized", "C2\nambiguous, misinterpretation\nauthorized",

@@ -82,10 +82,9 @@ def main() -> int:
     fig.patch.set_facecolor("white")
     fig.tight_layout()
 
-    for ext in ("png", "pdf", "svg"):
-        out = _FIGURES_DIR / f"delegate_five_arm_combined.{ext}"
-        fig.savefig(out, dpi=200 if ext == "png" else None, facecolor="white", bbox_inches="tight")
-        print(f"saved {out}")
+    out = _FIGURES_DIR / "delegate_five_arm_combined.png"
+    fig.savefig(out, dpi=200, facecolor="white", bbox_inches="tight")
+    print(f"saved {out}")
     plt.close(fig)
     return 0
 

@@ -1,0 +1,11 @@
+method,metric,units,units_with_event,exact_95_upper
+no_verification,unsafe,80,71,
+no_verification,false_reject,58,0,
+self_consistency,unsafe,80,71,
+self_consistency,false_reject,58,4,
+semantic_only,unsafe,80,40,
+semantic_only,false_reject,58,0,
+authorization_only,unsafe,80,31,
+authorization_only,false_reject,58,0,
+dualflow,unsafe,80,0,
+dualflow,false_reject,58,0,

@@ -1,0 +1,4 @@
+comparison,case,units,comparator_higher,reference_higher,ties
+H3a_semantic_flow_only_vs_dualflow,C3,40,40,0,0
+H3b_authorization_flow_only_vs_dualflow,C2,40,31,0,9
+H5_dualflow_no_context_vs_context,C2,40,28,0,12

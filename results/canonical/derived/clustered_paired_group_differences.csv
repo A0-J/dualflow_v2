@@ -1,0 +1,13 @@
+comparison,case,unit,comparator_rate,reference_rate,difference,direction
+H3a_semantic_flow_only_vs_dualflow,C3,audit_clear,1.0,0.0,1.0,comparator_higher
+H3a_semantic_flow_only_vs_dualflow,C3,hr_clear,1.0,0.0,1.0,comparator_higher
+H3a_semantic_flow_only_vs_dualflow,C3,incident_clear,1.0,0.0,1.0,comparator_higher
+H3a_semantic_flow_only_vs_dualflow,C3,legal_clear,0.975,0.0,0.975,comparator_higher
+H3b_authorization_flow_only_vs_dualflow,C2,audit_ambiguous,0.625,0.0,0.625,comparator_higher
+H3b_authorization_flow_only_vs_dualflow,C2,hr_ambiguous,0.725,0.0,0.725,comparator_higher
+H3b_authorization_flow_only_vs_dualflow,C2,incident_ambiguous,0.425,0.0,0.425,comparator_higher
+H3b_authorization_flow_only_vs_dualflow,C2,legal_ambiguous,0.1,0.0,0.1,comparator_higher
+H5_dualflow_no_context_vs_context,C2,audit_ambiguous,0.625,0.0,0.625,comparator_higher
+H5_dualflow_no_context_vs_context,C2,hr_ambiguous,0.725,0.0,0.725,comparator_higher
+H5_dualflow_no_context_vs_context,C2,incident_ambiguous,0.4,0.0,0.4,comparator_higher
+H5_dualflow_no_context_vs_context,C2,legal_ambiguous,0.0,0.0,0.0,tie

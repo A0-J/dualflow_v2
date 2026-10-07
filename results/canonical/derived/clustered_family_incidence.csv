@@ -1,0 +1,11 @@
+method,metric,units,units_with_event,exact_95_upper
+no_verification,unsafe,8,8,1.0
+no_verification,false_reject,7,0,0.4096163972250034
+self_consistency,unsafe,8,8,1.0
+self_consistency,false_reject,7,2,0.7095791362626573
+semantic_only,unsafe,8,4,0.8429872295129421
+semantic_only,false_reject,7,0,0.4096163972250034
+authorization_only,unsafe,8,4,0.8429872295129421
+authorization_only,false_reject,7,0,0.4096163972250034
+dualflow,unsafe,8,0,0.3694166475528192
+dualflow,false_reject,7,0,0.4096163972250034

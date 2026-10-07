@@ -17,7 +17,26 @@
 ```bash
 PYTHONPATH=src python experiments/canonical/analyze.py     # pre-registered hypotheses
 PYTHONPATH=src python experiments/canonical/secondary.py   # secondary analyses
+PYTHONPATH=src python experiments/canonical/clustered_sensitivity.py  # post-hoc dependence sensitivity
 ```
+
+**Dependence sensitivity (post-hoc).** The evaluation cells are nested:
+8 source delegations (one delegation variant family each) → 80 delegation
+texts → 2 authorization configurations → 4 Executor Agent models.
+`clustered_sensitivity.py` restates the results at two coarser levels:
+
+- **Delegation text (80 units).** Configurations and models are collapsed
+  per text. This level is descriptive only: direction counts and
+  incidence, with no p-values or intervals, because generated delegation
+  variants of the same source delegation are not independent. It shows
+  whether an effect repeats across the wordings of a family.
+- **Source delegation (8 units).** The most conservative independent
+  unit. It reports exact family-incidence intervals and exact one-sided
+  sign tests. With only 4 families per case, p cannot fall below 1/16.
+
+Rates are computed per (source family, case), and cases are never pooled.
+This analysis does not replace the pre-registered cell-level analysis.
+Generalization is limited by the 8 source delegations.
 
 The sections below document the earlier exploratory experiments (E1–E5).
 They are kept for reproducibility.

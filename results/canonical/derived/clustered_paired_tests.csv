@@ -1,0 +1,4 @@
+comparison,case,units,comparator_higher,reference_higher,ties,exact_one_sided_sign_test_p
+H3a_semantic_flow_only_vs_dualflow,C3,4,4,0,0,0.0625
+H3b_authorization_flow_only_vs_dualflow,C2,4,4,0,0,0.0625
+H5_dualflow_no_context_vs_context,C2,4,3,0,1,0.125

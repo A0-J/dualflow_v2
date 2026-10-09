@@ -21,8 +21,8 @@ from analyze import CASES, METHODS
 from common import DERIVED, EXECUTOR_MODELS, ROOT, THRESHOLD
 
 FIGURES = ROOT / "figures"
-NAMES = {"no_verification": "No verification", "self_consistency": "Consistency-based Gate",
-         "semantic_only": "Semantic Flow only", "authorization_only": "Authorization Flow only",
+NAMES = {"no_verification": "No Verification", "self_consistency": "Consistency-based Gate",
+         "semantic_only": "Semantic Flow-Only", "authorization_only": "Authorization Flow-Only",
          "dualflow": "DualFlow"}
 CASE_LABELS = ["C1\nclear,\nauthorized", "C2\nambiguous, misinterpretation\nauthorized",
                "C3\nclear,\nnot authorized", "C4\nambiguous, misinterpretation\nnot authorized"]
@@ -65,7 +65,7 @@ def main() -> int:
     ax.set_yticks([y - 0.5 for y in range(1, len(METHODS))], minor=True)
     ax.grid(which="minor", color="white", linewidth=2)
     ax.tick_params(which="minor", length=0)
-    ax.set_title("(a) Unsafe execution rate, by method and case", loc="left", fontsize=11, color=INK, fontweight="bold")
+    ax.set_title("(a) Unsafe Execution, by approach and condition", loc="left", fontsize=11, color=INK, fontweight="bold")
 
     ax = axes[1]
     amb = [r for r in cells if r["case"] == "C2"]  # each ambiguous delegation text once per model
@@ -74,9 +74,9 @@ def main() -> int:
         confident = sum(r["misread"] and r["executor_entropy"] <= THRESHOLD for r in sub)
         hesitant = sum(r["misread"] and r["executor_entropy"] > THRESHOLD for r in sub)
         ax.bar(i, confident / len(sub), width=0.55, color=BLUE,
-               label="confident (entropy ≤ 0.8)" if i == 0 else None)
+               label="permitted by Consistency-based Gate (entropy ≤ 0.8 bits)" if i == 0 else None)
         ax.bar(i, hesitant / len(sub), width=0.55, bottom=confident / len(sub), color=LIGHT_BLUE,
-               label="not confident" if i == 0 else None)
+               label="blocked by Consistency-based Gate" if i == 0 else None)
         ax.text(i, (confident + hesitant) / len(sub) + 0.03, f"{confident + hesitant}/{len(sub)}",
                 ha="center", va="bottom", fontsize=9, color=INK)
     ax.set_xticks(range(len(EXECUTOR_MODELS)))
@@ -84,7 +84,7 @@ def main() -> int:
     ax.set_ylim(0, 1.08)
     ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
     ax.set_yticklabels(["0%", "25%", "50%", "75%", "100%"])
-    ax.set_ylabel("ambiguous delegation variants\nmisinterpreted as an irreversible task", color=MUTED, fontsize=9.5)
+    ax.set_ylabel("ambiguous delegation messages with\nirreversible misinterpretation", color=MUTED, fontsize=9.5)
     ax.yaxis.grid(True, color=GRID, linewidth=0.8)
     ax.set_axisbelow(True)
     for side in ("top", "right", "left"):
@@ -92,7 +92,7 @@ def main() -> int:
     ax.spines["bottom"].set_color("#c3c2b7")
     ax.tick_params(colors=MUTED, labelsize=9, length=0)
     ax.legend(frameon=False, fontsize=8.8, loc="upper right")
-    ax.set_title("(b) Irreversible misinterpretation, by Executor Agent", loc="left", fontsize=11, color=INK, fontweight="bold")
+    ax.set_title("(b) Irreversible misinterpretation, by Executor model", loc="left", fontsize=11, color=INK, fontweight="bold")
 
     fig.patch.set_facecolor("white")
     fig.tight_layout()

@@ -37,30 +37,32 @@ def main() -> int:
     ax.axis("off")
 
     box(ax, 0.2, 2.6, 2.4, 1.7, AGENT, EDGE["agent"], "Planner Agent",
-        "private task context g\n(never shown to the\nExecutor Agent)")
+        "task context $C_{task}$\n(not passed to the\nExecutor Agent)")
     box(ax, 0.2, 0.3, 2.4, 1.7, AGENT, EDGE["agent"], "Executor Agent",
-        "sees delegation d\nand runtime context c")
-    arrow(ax, (1.4, 2.6), (1.4, 2.0), "delegation d", offset=(0.75, -0.12))
+        "interprets $d$ into an\nexecution proposal")
+    arrow(ax, (1.4, 2.6), (1.4, 2.0), "delegation\nmessage $d$", offset=(0.72, -0.18))
 
     box(ax, 3.6, 2.6, 3.5, 1.7, SEM, EDGE["sem"], "Semantic Flow",
-        "Semantic Verifier: Planner Agent restates\nits intended task N times → modal\no_P = (a, r, s); pass iff o_E = o_P")
+        "$P_{intent}$ generated $N$ times from $C_{task}$ and $d$\n→ most frequent $(a, r, s)$ = $\\hat{P}_{intent}$\n"
+        "$V_{sem} = 1$ iff $P_{exec} = \\hat{P}_{intent}$")
     box(ax, 3.6, 0.3, 3.5, 1.7, AUTH, EDGE["auth"], "Authorization Flow",
-        "Authorization Verifier: policy π\n(actions, resources, scopes) and\nauthorization state σ (granted approvals);\npass iff π allows o_E and σ grants it\nwhen approval is required")
+        "authorization policy $\\pi$ and\napproval state $\\sigma$ (managed externally)\n"
+        "$V_{auth} = 1$ iff $P_{exec}$ satisfies $\\pi$ and $\\sigma$")
 
-    arrow(ax, (2.6, 3.45), (3.6, 3.45), "restatements")
-    arrow(ax, (2.6, 1.15), (3.6, 1.15), "execution\nproposal o_E", offset=(0, -0.62))
+    arrow(ax, (2.6, 3.45), (3.6, 3.45), "$P_{intent} \\times N$")
+    arrow(ax, (2.6, 1.15), (3.6, 1.15), "$P_{exec}$", offset=(0, -0.42))
     arrow(ax, (3.1, 1.15), (3.75, 2.6), "", color=MUTED)
 
-    box(ax, 8.0, 1.45, 1.6, 1.7, GATE, EDGE["gate"], "AND", "execute only if\nboth flows pass")
+    box(ax, 8.0, 1.45, 1.6, 1.7, GATE, EDGE["gate"], "Execution\nGate", "\n$D = V_{sem} \\wedge V_{auth}$")
     arrow(ax, (7.1, 3.45), (8.0, 2.75))
     arrow(ax, (7.1, 1.15), (8.0, 1.85))
 
-    box(ax, 10.2, 2.6, 1.6, 1.0, "#ffffff", EDGE["sem"], "EXECUTE")
-    box(ax, 10.2, 0.85, 1.6, 1.0, "#ffffff", EDGE["auth"], "BLOCK", "reason recorded")
+    box(ax, 10.2, 2.6, 1.6, 1.0, "#ffffff", EDGE["sem"], "EXECUTE", "$D = 1$")
+    box(ax, 10.2, 0.85, 1.6, 1.0, "#ffffff", EDGE["auth"], "BLOCK", "$D = 0$")
     arrow(ax, (9.6, 2.6), (10.2, 3.1))
     arrow(ax, (9.6, 2.0), (10.2, 1.35))
 
-    ax.text(5.6, 2.33, "independent verifiers, separate information sources", ha="center", va="center",
+    ax.text(5.45, 2.33, "distinct sources of evidence", ha="center", va="center",
             fontsize=8.4, color=MUTED, style="italic")
 
     out = ROOT / "figures" / "dualflow_architecture.png"

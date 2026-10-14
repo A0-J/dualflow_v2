@@ -1,19 +1,19 @@
-"""DualFlow verification: Semantic Flow and Authorization Flow.
+"""DualFlow verification: Semantic Flow, Authorization Flow and Execution Gate.
 
-The Executor Agent proposes one operation (action, resource, scope). Before
-anything executes, two independent checks run:
+Notation follows the paper. The Executor Agent turns the delegation message
+d into one execution proposal P_exec = (a, r, s): action, resource, scope.
+Before anything executes, two independent checks run:
 
-- Semantic Flow: does the proposal match the operation the Planner Agent
-  intends? The Planner restates its intended operation N times,
-  independently and from its own task context; the proposal must equal
-  the Planner's modal restatement on action, resource, and scope.
-- Authorization Flow: is the proposal permitted? Deterministic, no LLM:
-  the policy grants actions, resource prefixes and scopes, and an action
-  that requires approval passes only if the current authorization state
-  holds a granted approval for exactly this (action, resource, scope).
-  Nothing the Executor says about approvals is consulted.
-
-The operation executes only if both flows pass.
+- Semantic Flow (V_sem): the Planner Agent generates its intended operation
+  P_intent N times from its task context C_task and d, without seeing
+  P_exec. The most frequent (a, r, s) is the representative intent
+  P̂_intent, and V_sem = 1 iff P_exec = P̂_intent on all three fields.
+- Authorization Flow (V_auth): deterministic, no LLM. The authorization
+  policy π grants actions, resource prefixes and scopes and lists the
+  actions that need approval. The approval state σ records the approvals
+  actually granted, per exact (a, r, s). Nothing the Executor Agent says
+  about approvals is consulted.
+- Execution Gate: D = V_sem ∧ V_auth. The operation executes only if D = 1.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from .parsing import _FENCE_RE, _first_json_object
+from .parsing import parse_json_object
 
 
 def _norm(value: Any) -> str:
@@ -47,7 +47,7 @@ class Proposal:
 
 
 def parse_proposal(text: str) -> Proposal:
-    obj = _first_json_object(_FENCE_RE.sub("", text.strip()).strip())
+    obj = parse_json_object(text)
     missing = {"action", "resource", "scope"}.difference(obj)
     if missing:
         raise ValueError(f"Missing proposal fields: {sorted(missing)}")
@@ -55,7 +55,7 @@ def parse_proposal(text: str) -> Proposal:
 
 
 def modal(proposals: Iterable[Proposal]) -> Proposal:
-    """Most frequent proposal; ties go to the earliest observed."""
+    """Most frequent (a, r, s); ties go to the earliest observed."""
     items = [p.canonical() for p in proposals]
     if not items:
         raise ValueError("modal() requires at least one proposal")
@@ -76,6 +76,8 @@ def semantic_flow(proposal: Proposal, planner_restatements: list[Proposal]) -> S
 
 @dataclass(frozen=True)
 class AuthorizationPolicy:
+    """π: what this deployment may do at all, managed outside both agents."""
+
     allowed_actions: frozenset[str]
     resource_prefixes: tuple[str, ...]
     allowed_scopes: frozenset[str]
@@ -93,7 +95,7 @@ class AuthorizationPolicy:
 
 @dataclass(frozen=True)
 class AuthorizationState:
-    """Approvals that have actually been granted, recorded outside any agent."""
+    """σ: approvals actually granted, per exact (a, r, s), recorded outside both agents."""
 
     granted: frozenset[Proposal]
 
@@ -124,6 +126,8 @@ def authorization_flow(proposal: Proposal, policy: AuthorizationPolicy,
 
 @dataclass(frozen=True)
 class Decision:
+    """Execution Gate output: execute = D = V_sem ∧ V_auth."""
+
     execute: bool
     semantic: SemanticVerdict
     authorization: AuthorizationVerdict

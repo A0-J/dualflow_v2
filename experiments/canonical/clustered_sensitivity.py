@@ -1,6 +1,6 @@
 """Post-hoc dependence sensitivity for the canonical C1-C4 evaluation.
 
-The pre-registered cell-level analysis (analyze.py) is unchanged. Its cells
+The planned cell-level analysis (analyze.py, PREREGISTRATION.md) is unchanged. Its cells
 are nested:
 
     8 source delegations (one delegation variant family each)
@@ -35,13 +35,13 @@ from common import DERIVED, EXECUTOR_MODELS, clopper_pearson
 from dualflow.io import read_jsonl
 from scenarios import DOMAINS
 
-METHODS = ("no_verification", "self_consistency", "semantic_only",
-           "authorization_only", "dualflow")
+METHODS = ("no_verification", "consistency_gate", "semantic_flow_only",
+           "authorization_flow_only", "dualflow")
 CASES_BY_CLARITY = {"clear": ("C1", "C3"), "ambiguous": ("C2", "C4")}
 # name, case, comparator (method, Planner Agent condition), reference (method, condition)
 COMPARISONS = (
-    ("H3a_semantic_flow_only_vs_dualflow", "C3", ("semantic_only", "context"), ("dualflow", "context")),
-    ("H3b_authorization_flow_only_vs_dualflow", "C2", ("authorization_only", "context"), ("dualflow", "context")),
+    ("H3a_semantic_flow_only_vs_dualflow", "C3", ("semantic_flow_only", "context"), ("dualflow", "context")),
+    ("H3b_authorization_flow_only_vs_dualflow", "C2", ("authorization_flow_only", "context"), ("dualflow", "context")),
     ("H5_dualflow_no_context_vs_context", "C2", ("dualflow", "no_context"), ("dualflow", "context")),
 )
 
@@ -99,9 +99,9 @@ def family_case_rates(rows: list[dict]) -> list[dict]:
             cells[(group_key(row), row["case"])].append(row)
     out = []
     for method in METHODS:
-        for metric, eligible in (("unsafe", lambda r: True),
-                                 ("false_reject", lambda r: r["should_execute"]),
-                                 ("correct", lambda r: True)):
+        for metric, eligible in (("unsafe_execution", lambda r: True),
+                                 ("false_rejection", lambda r: r["valid_proposal"]),
+                                 ("correct_decision", lambda r: True)):
             for (group, case) in sorted(cells):
                 den = [r for r in cells[(group, case)] if eligible(r)]
                 num = sum(bool(r[f"{method}__{metric}"]) for r in den)
@@ -112,7 +112,7 @@ def family_case_rates(rows: list[dict]) -> list[dict]:
 
 
 def incidence(rows: list[dict], unit, *, with_interval: bool) -> list[dict]:
-    """Units (texts or families) with at least one unsafe execution / false rejection.
+    """Units (texts or families) with at least one Unsafe Execution / False Rejection.
 
     A unit counts toward a metric only if it has an eligible cell. The exact
     interval is reported only for independent units (source families)."""
@@ -122,7 +122,8 @@ def incidence(rows: list[dict], unit, *, with_interval: bool) -> list[dict]:
             by_unit[unit(row)].append(row)
     out = []
     for method in METHODS:
-        for metric, eligible in (("unsafe", lambda r: True), ("false_reject", lambda r: r["should_execute"])):
+        for metric, eligible in (("unsafe_execution", lambda r: True),
+                                 ("false_rejection", lambda r: r["valid_proposal"])):
             units = [[r for r in v if eligible(r)] for v in by_unit.values()]
             units = [u for u in units if u]
             events = sum(any(r[f"{method}__{metric}"] for r in u) for u in units)
@@ -138,7 +139,7 @@ def _unsafe_rate(rows: list[dict], method: str, condition: str) -> float:
     selected = [r for r in rows if r["planner_condition"] == condition]
     if not selected:
         raise ValueError(f"No {condition} cells for a paired unit")
-    return sum(bool(r[f"{method}__unsafe"]) for r in selected) / len(selected)
+    return sum(bool(r[f"{method}__unsafe_execution"]) for r in selected) / len(selected)
 
 
 def paired_differences(rows: list[dict], unit) -> list[dict]:
@@ -204,16 +205,16 @@ def main() -> None:
     def dualflow(rows, metric):
         return next(r for r in rows if r["method"] == "dualflow" and r["metric"] == metric)
 
-    print("Post-hoc dependence sensitivity (does not replace the pre-registered cell-level analysis)")
+    print("Post-hoc dependence sensitivity (does not replace the planned cell-level analysis)")
     print("\nLevel 1 - delegation text (80), descriptive only: texts within a family are not independent")
-    for metric in ("unsafe", "false_reject"):
+    for metric in ("unsafe_execution", "false_rejection"):
         r = dualflow(text_incidence, metric)
         print(f"  DualFlow {metric}: {r['units_with_event']}/{r['units']} texts with any event")
     for r in text_directions:
         print(f"  {r['comparison']}: comparator higher in {r['comparator_higher']}/{r['units']} texts, "
               f"reference higher in {r['reference_higher']}, ties {r['ties']}")
     print("\nLevel 2 - source delegation (8), the most conservative independent unit")
-    for metric in ("unsafe", "false_reject"):
+    for metric in ("unsafe_execution", "false_rejection"):
         r = dualflow(family_incidence, metric)
         print(f"  DualFlow {metric}: {r['units_with_event']}/{r['units']} families with any event, "
               f"exact 95% upper {r['exact_95_upper']:.3f}")

@@ -24,7 +24,7 @@ from common import DERIVED as CANONICAL_DERIVED, fmt  # noqa: E402
 from dualflow.io import read_jsonl  # noqa: E402
 
 OUT = ROOT / "results" / "human_validation"
-METHODS = ("no_verification", "self_consistency", "semantic_only", "authorization_only", "dualflow")
+METHODS = ("no_verification", "consistency_gate", "semantic_flow_only", "authorization_flow_only", "dualflow")
 
 
 def fleiss_kappa(ratings: list[list[str]]) -> float:
@@ -121,7 +121,7 @@ def main() -> None:
     cells = [c for c in read_jsonl(CANONICAL_DERIVED / "cells.jsonl") if c["planner_condition"] == "context" and c["case"] == "C2"]
     for model in sorted({c["executor_model"] for c in cells}):
         sub = [c for c in cells if c["executor_model"] == model]
-        print(f"  Executor Agent {model}: {fmt(sum(c['misread'] for c in sub), len(sub))}")
+        print(f"  Executor Agent {model}: {fmt(sum(c['irreversible_misinterpretation'] for c in sub), len(sub))}")
 
     print("\n## 4. Meaning preservation of generated delegation variants (Phase B Q2)")
     variants = [tid for tid, t in items.items() if not t["original"]]
@@ -138,11 +138,11 @@ def main() -> None:
                            ("excluding meaning-changing variants", excl_drift),
                            ("excluding both", excl_gt | excl_drift)):
         sub = [c for c in all_cells if c["text_id"] not in excluded]
-        should = [c for c in sub if c["should_execute"]]
+        valid = [c for c in sub if c["valid_proposal"]]
         print(f"### {name}: {len(sub) // 4 if sub else 0} scenarios x 4 Executor Agent models = {len(sub)} cells")
         for m in METHODS:
-            print(f"  {m:20s} unsafe {fmt(sum(c[f'{m}__unsafe'] for c in sub), len(sub)):26s} "
-                  f"false rejection {fmt(sum(c[f'{m}__false_reject'] for c in should), len(should))}")
+            print(f"  {m:24s} unsafe execution {fmt(sum(c[f'{m}__unsafe_execution'] for c in sub), len(sub)):26s} "
+                  f"false rejection {fmt(sum(c[f'{m}__false_rejection'] for c in valid), len(valid))}")
 
 
 if __name__ == "__main__":

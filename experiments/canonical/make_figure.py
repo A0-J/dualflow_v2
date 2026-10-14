@@ -5,8 +5,8 @@
   (b) irreversible misinterpretation of ambiguous delegation variants by
       Executor Agent model, split into
       confident (entropy <= 0.8) and not confident
-Planner with task context; (a) is pooled over Executor models. False
-rejects are reported in the text table. Sequential single-hue ramp for the
+Planner Agent with task context; (a) is pooled over Executor Agent models.
+False Rejections are reported in the text table. Sequential single-hue ramp for the
 magnitude in (a); one series hue plus a lighter step of it in (b).
 """
 
@@ -21,8 +21,8 @@ from analyze import CASES, METHODS
 from common import DERIVED, EXECUTOR_MODELS, ROOT, THRESHOLD
 
 FIGURES = ROOT / "figures"
-NAMES = {"no_verification": "No Verification", "self_consistency": "Consistency-based Gate",
-         "semantic_only": "Semantic Flow-Only", "authorization_only": "Authorization Flow-Only",
+NAMES = {"no_verification": "No Verification", "consistency_gate": "Consistency-based Gate",
+         "semantic_flow_only": "Semantic Flow-Only", "authorization_flow_only": "Authorization Flow-Only",
          "dualflow": "DualFlow"}
 CASE_LABELS = ["C1\nclear,\nauthorized", "C2\nambiguous, misinterpretation\nauthorized",
                "C3\nclear,\nnot authorized", "C4\nambiguous, misinterpretation\nnot authorized"]
@@ -44,7 +44,7 @@ def main() -> int:
         row = []
         for case in CASES:
             sub = [r for r in cells if r["case"] == case]
-            k = sum(r[f"{m}__unsafe"] for r in sub)
+            k = sum(r[f"{m}__unsafe_execution"] for r in sub)
             row.append((k, len(sub)))
         values.append(row)
     rates = [[k / n for k, n in row] for row in values]
@@ -71,8 +71,8 @@ def main() -> int:
     amb = [r for r in cells if r["case"] == "C2"]  # each ambiguous delegation text once per model
     for i, model in enumerate(EXECUTOR_MODELS):
         sub = [r for r in amb if r["executor_model"] == model]
-        confident = sum(r["misread"] and r["executor_entropy"] <= THRESHOLD for r in sub)
-        hesitant = sum(r["misread"] and r["executor_entropy"] > THRESHOLD for r in sub)
+        confident = sum(r["irreversible_misinterpretation"] and r["executor_entropy"] <= THRESHOLD for r in sub)
+        hesitant = sum(r["irreversible_misinterpretation"] and r["executor_entropy"] > THRESHOLD for r in sub)
         ax.bar(i, confident / len(sub), width=0.55, color=BLUE,
                label="permitted by Consistency-based Gate (entropy ≤ 0.8 bits)" if i == 0 else None)
         ax.bar(i, hesitant / len(sub), width=0.55, bottom=confident / len(sub), color=LIGHT_BLUE,

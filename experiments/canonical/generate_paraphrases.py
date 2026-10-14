@@ -13,7 +13,7 @@ import os
 from openai import OpenAI
 
 from dualflow.io import write_jsonl
-from dualflow.parsing import _FENCE_RE
+from dualflow.parsing import strip_fences
 
 from common import PARAPHRASE_GENERATOR_MODEL, PARAPHRASES, PARAPHRASES_PER_DELEGATION
 from scenarios import DOMAINS
@@ -58,7 +58,7 @@ def main() -> None:
                                             input=PROMPT.format(seed=seed, k=REQUEST_K),
                                             temperature=1.0, top_p=1.0)
                 calls += 1
-                for text in json.loads(_FENCE_RE.sub("", r.output_text.strip()).strip()):
+                for text in json.loads(strip_fences(r.output_text)):
                     if isinstance(text, str) and text.strip() and _norm(text) not in seen:
                         seen.add(_norm(text))
                         kept.append(text.strip())

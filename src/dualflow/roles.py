@@ -1,8 +1,14 @@
 """Planner Agent and Executor Agent for the DualFlow setting (flows.py).
 
-The Executor sees only the natural-language delegation and the shared
-runtime context. The Planner additionally has its private task context.
-Neither agent sees the authorization policy or state.
+The Executor Agent sees only the delegation message d and the shared
+runtime context. The Planner Agent additionally has its private task
+context C_task. Neither agent sees the authorization policy π or the
+approval state σ.
+
+`ExecutorAgent.propose` and `PlannerAgent.restate` are the calls of the
+canonical C1-C4 evaluation; their instructions are frozen. `delegate` and
+`clarify` are used only by the end-to-end runtime (runtime.py), where the
+Planner Agent writes d itself.
 """
 
 from __future__ import annotations
@@ -11,16 +17,30 @@ import json
 from dataclasses import dataclass
 
 from .flows import Proposal, parse_proposal
-from .llm import LLMClient
-from .models import LLMResponse
+from .llm import LLMClient, LLMResponse
+from .parsing import parse_json_object
 
 SCHEMA = '{"action":"...","resource":"...","scope":"..."}'
+DELEGATION_SCHEMA = '{"delegation":"..."}'
 
 
 @dataclass(frozen=True)
 class RoleCall:
     proposal: Proposal
     response: LLMResponse
+
+
+@dataclass(frozen=True)
+class DelegationCall:
+    delegation: str
+    response: LLMResponse
+
+
+def parse_delegation(text: str) -> str:
+    delegation = parse_json_object(text).get("delegation")
+    if not isinstance(delegation, str) or not delegation.strip():
+        raise ValueError(f"Missing delegation message in model output: {text[:200]!r}")
+    return delegation.strip()
 
 
 class ExecutorAgent:
@@ -51,8 +71,46 @@ runtime context. Your private task context is your own knowledge and is
 never shown to the executor. Choose the operation that accomplishes your
 task."""
 
+    DELEGATE_INSTRUCTIONS = f"""You are the planner agent. Given the user's request and your private task context, decide the single operation that accomplishes your task and write the natural-language delegation message you send to the executor agent, who performs it.
+Return exactly one JSON object with this schema and no prose:
+{DELEGATION_SCHEMA}
+The executor sees only your delegation message and the runtime context.
+Your private task context is never shown to the executor."""
+
+    CLARIFY_INSTRUCTIONS = f"""You are the planner agent. Your previous delegation message was not executed: the executor agent proposed an operation other than the one you intend. Write a new delegation message for the same task.
+Return exactly one JSON object with this schema and no prose:
+{DELEGATION_SCHEMA}
+The executor sees only your new delegation message and the runtime context.
+Your private task context is never shown to the executor."""
+
     def __init__(self, llm: LLMClient) -> None:
         self.llm = llm
+
+    def _delegation(self, instructions: str, payload: dict) -> DelegationCall:
+        response = self.llm.generate(
+            instructions=instructions,
+            input_text=json.dumps(payload, ensure_ascii=False),
+        )
+        return DelegationCall(parse_delegation(response.text), response)
+
+    def delegate(self, *, user_request: str, private_context: str, context: str) -> DelegationCall:
+        """Write the delegation message d for the user's request."""
+        return self._delegation(self.DELEGATE_INSTRUCTIONS, {
+            "user_request": user_request,
+            "private_task_context": private_context,
+            "runtime_context": context,
+        })
+
+    def clarify(self, *, user_request: str, private_context: str, context: str,
+                previous_delegation: str, rejected_proposal: Proposal) -> DelegationCall:
+        """Write a new d after the Semantic Flow rejected the Executor Agent's proposal."""
+        return self._delegation(self.CLARIFY_INSTRUCTIONS, {
+            "user_request": user_request,
+            "private_task_context": private_context,
+            "runtime_context": context,
+            "previous_delegation": previous_delegation,
+            "executor_proposal": rejected_proposal.to_dict(),
+        })
 
     def restate(self, *, delegation: str, private_context: str, context: str) -> RoleCall:
         payload = {

@@ -3,16 +3,21 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dualflow-v2"
-version = "0.1.0"
-description = "Minimal paper-ready experiments for independent semantic and authority verification"
+name = "dualflow"
+version = "0.2.0"
+description = "Semantic Flow and Authorization Flow verification of execution proposals in agent-to-agent delegation"
 requires-python = ">=3.11"
 dependencies = [
   "openai>=1.50.0",
 ]
 
 [project.optional-dependencies]
+figures = ["matplotlib>=3.8"]
 dev = ["pytest>=8.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

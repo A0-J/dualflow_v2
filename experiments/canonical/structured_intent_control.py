@@ -1,5 +1,4 @@
-"""Structured-intent control (post-hoc; added after the pre-registered
-analysis, 0 API calls).
+"""Structured-intent control (post-hoc control analysis, 0 API calls).
 
 Question: what if the Planner Agent sent its intended task as a structured
 (action, resource, scope) tuple instead of a natural-language delegation?
@@ -18,9 +17,12 @@ Units are scenarios (160), not cells: no Executor Agent is involved.
 from __future__ import annotations
 
 from dualflow.flows import AuthorizationPolicy, AuthorizationState, Proposal, authorization_flow, modal
+from dualflow.io import read_jsonl
+from dualflow.outcomes import Outcome, classify, label
 
-from analyze import label, load_samples, outcomes
+from analyze import load_samples
 from common import DERIVED, fmt, scenarios
+from scenarios import IRREVERSIBLE
 
 
 def main() -> None:
@@ -32,7 +34,7 @@ def main() -> None:
         lines.append(text)
 
     for unit in ("modal", "single"):
-        by_case = {c: {"n": 0, "unsafe": 0, "should": 0, "fr": 0, "mismatch": 0} for c in ("C1", "C2", "C3", "C4")}
+        by_case = {c: {"n": 0, "unsafe": 0, "valid": 0, "fr": 0, "mismatch": 0} for c in ("C1", "C2", "C3", "C4")}
         for s in scenarios():
             policy = AuthorizationPolicy.from_dict(s["policy"])
             state = AuthorizationState.from_dict(s["state"])
@@ -40,24 +42,23 @@ def main() -> None:
             restatements = planner[(s["text_id"], "context")]
             transmitted = [modal(restatements)] if unit == "modal" else restatements
             for o in transmitted:
-                lab = label(o, intended, policy, state)
-                out = outcomes(authorization_flow(o, policy, state).allowed, lab, o)
+                lab = label(o, intended, policy, state, IRREVERSIBLE)
+                out = classify(authorization_flow(o, policy, state).allowed, lab)
                 agg = by_case[s["case"]]
                 agg["n"] += 1
-                agg["unsafe"] += out["unsafe"]
-                agg["should"] += lab["should_execute"]
-                agg["fr"] += out["false_reject"]
-                agg["mismatch"] += not lab["intended"]
+                agg["unsafe"] += out == Outcome.UNSAFE_EXECUTION
+                agg["valid"] += lab.valid_proposal
+                agg["fr"] += out == Outcome.FALSE_REJECTION
+                agg["mismatch"] += not lab.intended
         say(f"## Structured intent ({unit} Planner Agent restatement) + Authorization Flow")
-        tot = {k: sum(v[k] for v in by_case.values()) for k in ("n", "unsafe", "should", "fr", "mismatch")}
+        tot = {k: sum(v[k] for v in by_case.values()) for k in ("n", "unsafe", "valid", "fr", "mismatch")}
         for case, a in list(by_case.items()) + [("all", tot)]:
-            say(f"{case:4s} unsafe {fmt(a['unsafe'], a['n']):24s} false rejection {fmt(a['fr'], a['should']):24s} "
+            say(f"{case:4s} unsafe execution {fmt(a['unsafe'], a['n']):24s} false rejection {fmt(a['fr'], a['valid']):24s} "
                 f"transmitted tuple != intended task: {a['mismatch']}/{a['n']}")
         say()
 
     say("## Intended task executed, where the intended task is authorized (C1, C2, C4)")
     say("natural-language delegation + DualFlow (unit: cell = scenario x Executor Agent model, Planner Agent with context)")
-    from dualflow.io import read_jsonl
     cells = [c for c in read_jsonl(DERIVED / "cells.jsonl") if c["planner_condition"] == "context"]
     for label_, cases in (("C1", ("C1",)), ("C2+C4", ("C2", "C4"))):
         sub = [c for c in cells if c["case"] in cases]

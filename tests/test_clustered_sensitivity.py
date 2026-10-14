@@ -24,11 +24,11 @@ def complete_design():
                         for condition in ("context", "no_context"):
                             row = {"text_id": f"{domain}_{clarity}_{i:02d}", "domain": domain, "case": case,
                                    "executor_model": model, "planner_condition": condition,
-                                   "should_execute": case != "C3"}
+                                   "valid_proposal": case != "C3"}
                             for m in METHODS:
-                                row[f"{m}__unsafe"] = False
-                                row[f"{m}__false_reject"] = False
-                                row[f"{m}__correct"] = True
+                                row[f"{m}__unsafe_execution"] = False
+                                row[f"{m}__false_rejection"] = False
+                                row[f"{m}__correct_decision"] = True
                             rows.append(row)
     return rows
 
@@ -62,7 +62,7 @@ def test_paired_differences_count_ties_at_both_levels():
     rows = complete_design()
     for r in rows:  # Semantic Flow only is unsafe on audit C3 only
         if r["text_id"].startswith("audit_clear") and r["case"] == "C3":
-            r["semantic_only__unsafe"] = True
+            r["semantic_flow_only__unsafe_execution"] = True
     families = direction_counts(paired_differences(rows, group_key), sign_test=True)
     texts = direction_counts(paired_differences(rows, text_key), sign_test=False)
     h3a_family = next(r for r in families if r["comparison"].startswith("H3a"))
@@ -77,7 +77,7 @@ def test_planner_condition_comparison_pairs_conditions_within_unit():
     rows = complete_design()
     for r in rows:
         if r["text_id"] == "hr_ambiguous_04" and r["case"] == "C2" and r["planner_condition"] == "no_context":
-            r["dualflow__unsafe"] = True
+            r["dualflow__unsafe_execution"] = True
     texts = direction_counts(paired_differences(rows, text_key), sign_test=False)
     h5 = next(r for r in texts if r["comparison"].startswith("H5"))
     assert (h5["comparator_higher"], h5["reference_higher"], h5["units"]) == (1, 0, 40)
@@ -88,10 +88,10 @@ def test_rates_never_pool_cases_and_incidence_interval_only_for_families():
     rates = family_case_rates(rows)
     keys = {(r["source_family"], r["case"]) for r in rates}
     assert ("audit_clear", "C1") in keys and ("audit_clear", "C3") in keys
-    assert all(r["denominator"] == 40 for r in rates if r["metric"] == "unsafe")
+    assert all(r["denominator"] == 40 for r in rates if r["metric"] == "unsafe_execution")
     text_inc = incidence(rows, text_key, with_interval=False)
     family_inc = incidence(rows, group_key, with_interval=True)
-    df_text = next(r for r in text_inc if r["method"] == "dualflow" and r["metric"] == "unsafe")
-    df_family = next(r for r in family_inc if r["method"] == "dualflow" and r["metric"] == "unsafe")
+    df_text = next(r for r in text_inc if r["method"] == "dualflow" and r["metric"] == "unsafe_execution")
+    df_family = next(r for r in family_inc if r["method"] == "dualflow" and r["metric"] == "unsafe_execution")
     assert (df_text["units"], df_text["exact_95_upper"]) == (80, "")
     assert df_family["units"] == 8 and 0.36 < df_family["exact_95_upper"] < 0.37

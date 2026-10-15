@@ -1,9 +1,24 @@
 from __future__ import annotations
 
 import time
-from typing import Protocol
+from dataclasses import asdict, dataclass
+from typing import Any, Protocol
 
-from .models import LLMResponse
+
+@dataclass(frozen=True)
+class LLMResponse:
+    text: str
+    requested_model: str
+    served_model: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    cached_input_tokens: int | None
+    latency_ms: float
+    temperature: float | None
+    top_p: float | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 class LLMClient(Protocol):

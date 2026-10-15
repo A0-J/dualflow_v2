@@ -1,52 +1,57 @@
-from dualflow.parsing import parse_interpretation
+import pytest
+
+from dualflow.flows import parse_proposal
+from dualflow.roles import parse_delegation
 
 
 def test_parses_plain_json():
-    interp = parse_interpretation(
-        '{"action": "summarize", "resource": "document", "scope": "audit/q3_raw_report.txt", "condition": []}'
-    )
-    assert interp.action == "summarize"
+    p = parse_proposal('{"action": "summarize", "resource": "audit/q3_raw_report.txt", "scope": "internal"}')
+    assert (p.action, p.resource, p.scope) == ("summarize", "audit/q3_raw_report.txt", "internal")
 
 
 def test_strips_markdown_fence():
-    text = '```json\n{"action": "read", "resource": "document", "scope": "audit/q3_raw_report.txt", "condition": []}\n```'
-    interp = parse_interpretation(text)
-    assert interp.action == "read"
+    text = '```json\n{"action": "read", "resource": "audit/q3_raw_report.txt", "scope": "internal"}\n```'
+    assert parse_proposal(text).action == "read"
 
 
 def test_ignores_trailing_content_after_json():
-    # Regression: a greedy `\{.*\}` regex spans to the LAST `}` in the
-    # text, which breaks (json.JSONDecodeError: Extra data) if the model
-    # appends anything containing a `}` after its answer -- seen live
-    # during the V2-V5 valid-scenario collection (2026-10).
-    text = (
-        '{"action": "send_external", "resource": "document", '
-        '"scope": "audit/q3_redacted_report.txt", "condition": ["recipient=approved_auditor"]}\n'
-        'Note: approval confirmed separately. {"status": "ok"}'
-    )
-    interp = parse_interpretation(text)
-    assert interp.action == "send_external"
-    assert interp.scope == "audit/q3_redacted_report.txt"
+    # A greedy regex would span to the last `}` and fail to decode.
+    text = ('{"action": "send_external", "resource": "audit/q3_redacted_report.txt", "scope": "external:auditor"}\n'
+            'Note: approval confirmed separately. {"status": "ok"}')
+    p = parse_proposal(text)
+    assert p.action == "send_external" and p.scope == "external:auditor"
 
 
-def test_recovers_from_stray_brace_before_the_real_object():
-    # Regression: a non-greedy `\{.*?\}` regex stops at the FIRST `}` it
-    # sees, which breaks (json.JSONDecodeError: Expecting ',' delimiter)
-    # if a `}` appears before the real object's end -- seen live on the
-    # retry after the greedy-regex fix above (2026-10).
-    text = (
-        'Treating {the redacted file} as the target.\n'
-        '{"action": "send_external", "resource": "document", '
-        '"scope": "audit/q3_redacted_report.txt", "condition": []}'
-    )
-    interp = parse_interpretation(text)
-    assert interp.action == "send_external"
+def test_brace_inside_string_value_does_not_end_the_object():
+    p = parse_proposal('{"action": "read", "resource": "notes/{draft}.txt", "scope": "internal"}')
+    assert p.resource == "notes/{draft}.txt"
 
 
-def test_missing_field_raises():
-    try:
-        parse_interpretation('{"action": "read", "resource": "document", "scope": "x"}')
-    except ValueError as e:
-        assert "condition" in str(e)
-    else:
-        raise AssertionError("expected ValueError for missing field")
+def test_proposal_is_canonicalized():
+    p = parse_proposal('{"action": " Summarize ", "resource": "Audit/Q3_raw_report.txt", "scope": "INTERNAL"}')
+    assert (p.action, p.resource, p.scope) == ("summarize", "audit/q3_raw_report.txt", "internal")
+
+
+def test_missing_field_is_an_error():
+    with pytest.raises(ValueError, match="Missing proposal fields"):
+        parse_proposal('{"action": "read", "resource": "audit/q3_raw_report.txt"}')
+
+
+def test_parse_delegation():
+    assert parse_delegation('```json\n{"delegation": " Summarize the Q3 report. "}\n```') == "Summarize the Q3 report."
+    with pytest.raises(ValueError, match="Missing delegation"):
+        parse_delegation('{"delegation": ""}')
+
+
+def test_parse_executor_turn():
+    from dualflow.roles import parse_executor_turn
+    p, q, unclear = parse_executor_turn(
+        '{"decision": "execute", "action": "summarize", "resource": "audit/q3_raw_report.txt", "scope": "internal"}')
+    assert p.action == "summarize" and q is None and unclear == ()
+    p, q, unclear = parse_executor_turn(
+        '```json\n{"decision": "ASK", "question": "Send it, or summarize it?", "unclear": ["Scope", "action", "x"]}\n```')
+    assert p is None and q == "Send it, or summarize it?" and unclear == ("action", "scope")
+    for bad in ('{"decision": "execute", "action": "read"}', '{"decision": "ask", "question": ""}',
+                '{"decision": "maybe"}', '{"decision": "ask", "question": "q", "unclear": "action"}'):
+        with pytest.raises(ValueError):
+            parse_executor_turn(bad)

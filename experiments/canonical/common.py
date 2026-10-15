@@ -1,4 +1,5 @@
-"""Shared settings for the canonical C1-C4 evaluation (PREREGISTRATION.md).
+"""Shared settings for the canonical C1-C4 evaluation (PREREGISTRATION.md,
+written before data collection).
 
 Run every script with this repo's src/ on the path:
     PYTHONPATH=src python experiments/canonical/<script>.py
@@ -6,10 +7,10 @@ Run every script with this repo's src/ on the path:
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
 from dualflow.io import read_jsonl
+from dualflow.stats import clopper_pearson, mcnemar_exact  # noqa: F401  (re-exported for the scripts)
 
 from scenarios import CASES, DOMAINS, authorization_config
 
@@ -21,7 +22,7 @@ PARAPHRASES = RAW / "paraphrases.jsonl"
 SAMPLES = RAW / "samples.jsonl"
 
 N_SAMPLES = 20
-THRESHOLD = 0.8          # self-consistency baseline: execute iff entropy <= THRESHOLD
+THRESHOLD = 0.8          # Consistency-based Gate: execute iff entropy (bits) <= THRESHOLD
 PARAPHRASES_PER_DELEGATION = 9
 PARAPHRASE_GENERATOR_MODEL = "gpt-4.1"
 
@@ -65,39 +66,8 @@ def scenarios() -> list[dict]:
     return out
 
 
-def clopper_pearson(k: int, n: int, alpha: float = 0.05) -> tuple[float, float]:
-    if n == 0:
-        return (float("nan"), float("nan"))
-
-    def cdf(kk, p):
-        return sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(kk + 1))
-
-    def bisect(f):
-        lo, hi = 0.0, 1.0
-        inc = f(hi) > f(lo)
-        for _ in range(80):
-            mid = (lo + hi) / 2
-            if (f(mid) < 0) == inc:
-                lo = mid
-            else:
-                hi = mid
-        return (lo + hi) / 2
-
-    lo = 0.0 if k == 0 else bisect(lambda p: (1 - cdf(k - 1, p)) - alpha / 2)
-    hi = 1.0 if k == n else bisect(lambda p: cdf(k, p) - alpha / 2)
-    return lo, hi
-
-
 def fmt(k: int, n: int) -> str:
     if n == 0:
         return "-"
     lo, hi = clopper_pearson(k, n)
     return f"{k}/{n} ({k / n:.0%}) [{lo:.2f}, {hi:.2f}]"
-
-
-def mcnemar_exact(b: int, c: int) -> float:
-    n = b + c
-    if n == 0:
-        return 1.0
-    k = min(b, c)
-    return min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n)

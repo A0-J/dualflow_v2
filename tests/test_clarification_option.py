@@ -64,3 +64,44 @@ def test_pinned_model_ids_are_the_models_that_served_the_canonical_collection():
         if r["role"] == "executor":
             served.setdefault(r["model"], set()).add(r["response"]["served_model"])
     assert {m: {i} for m, i in collect.MODEL_IDS.items()} == served
+
+
+def _error_as_collected(text):
+    """The parse error string exactly as collect.py stores it."""
+    from dualflow.roles import parse_executor_turn
+    try:
+        parse_executor_turn(text)
+    except ValueError as e:
+        return str(e)[:300]
+    raise AssertionError("expected a parse error")
+
+
+def test_sensitivity_rule_reads_only_consistent_valid_action_decisions():
+    ok = ('{"decision":"send_external","action":"send_external",'
+          '"resource":"audit/q3_redacted_report.txt","scope":"external:auditor"}')
+    turn = analyze.reinterpret_first_error(_error_as_collected(ok), "audit")
+    assert turn["decision"] == "execute" and Proposal.from_dict(turn["proposal"]) == SEND
+    for bad in (
+        ok.replace('"action":"send_external"', '"action":"summarize"'),                # decision and action conflict
+        ok.replace("audit/q3_redacted_report.txt", "audit/q4_report.txt"),            # resource not in the context
+        ok.replace("external:auditor", "external:press"),                              # scope not in the context
+        ok.replace('"decision":"send_external"', '"decision":"proceed"'),              # not an action name
+        '{"decision":"execute","action":"read"}',                                      # missing fields
+        "I would send the report.",                                                    # no JSON
+    ):
+        assert analyze.reinterpret_first_error(_error_as_collected(bad), "audit") is None, bad
+
+
+def test_first_attempt_uses_the_record_when_it_passed_and_the_first_error_otherwise():
+    valid = {"decision": "ask", "proposal": None, "unclear": ["action"], "parse_errors": [], "sample_index": 0}
+    assert analyze.first_attempt(valid, "audit") is valid
+    retried = {**valid, "parse_errors": [_error_as_collected('{"decision":"maybe"}')]}
+    assert analyze.first_attempt(retried, "audit") is None
+
+
+def test_context_labels_and_actions_match_the_runtime_context():
+    from scenarios import ACTIONS as ACTION_TEXT
+    files, scopes = analyze.context_labels("legal")
+    assert files == {"legal/drafts/contract_v3.docx", "legal/executed/contract_signed.pdf"}
+    assert scopes == {"internal", "external:outside_counsel"}
+    assert all(f"- {a}:" in ACTION_TEXT for a in analyze.ACTIONS)

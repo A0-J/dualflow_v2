@@ -199,7 +199,9 @@ PYTHONPATH=src python experiments/ambiguity_screening/screen_signals.py   # -> r
 **Clarification-option experiment** (`experiments/clarification_option/`,
 planned, not yet run). The canonical Executor Agent could not say that a
 delegation was unclear. This experiment gives it the option to ask the
-Planner Agent, on the same 80 texts and four pinned models. It measures:
+Planner Agent, on the same 80 texts. The models run in two stages, with pinned
+versions: `gpt-4o-mini` and `gpt-4.1` first, then `gpt-5.5` and `gpt-6.1-sol`.
+It measures:
 
 - how often unqueried semantic mismatches remain;
 - how often the Executor Agent asks about clear delegations;
@@ -209,7 +211,7 @@ The plan, `PLAN.md`, is committed before collection.
 
 ```bash
 PYTHONPATH=src python experiments/clarification_option/check_models.py --call   # 7 calls: which model serves each ID
-PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit   # 3,200 calls
+PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit   # stage 1: 1,600 calls
 PYTHONPATH=src python experiments/clarification_option/analyze.py
 ```
 

@@ -38,8 +38,11 @@ premise of the follow-up work before any detection method is designed.
 
 - **Delegations.** The 80 canonical delegation texts (8 originals, 72
   generated variants) with their runtime contexts, unchanged. No new texts.
-- **Executor Agent models.** `gpt-4o-mini`, `gpt-4.1`, `gpt-5.5`,
-  `gpt-6.1-sol`, with the canonical settings:
+- **Executor Agent models, in two stages** (see "Stages" below).
+  - **Stage 1:** `gpt-4o-mini` and `gpt-4.1`.
+  - **Stage 2, later:** `gpt-5.5` and `gpt-6.1-sol`.
+
+  All use the canonical settings:
   - T=1.0 and top_p=1.0 where supported;
   - provider defaults for `gpt-5.5` and `gpt-6.1-sol`, which reject these
     parameters;
@@ -72,8 +75,8 @@ premise of the follow-up work before any detection method is designed.
   `{"decision":"execute","action","resource","scope"}` or
   `{"decision":"ask","question","unclear":[facets]}`. Unparseable output is
   retried up to 3 more times, and the parse errors are recorded.
-- **Samples.** k = 5 per (delegation text, model): 80 × 4 × 5 = 1,600
-  calls per prompt.
+- **Samples.** k = 5 per (delegation text, model): 80 × 2 × 5 = 800 calls
+  per prompt and stage.
   - k = 5 is enough to observe whether a model asks. It does not measure
     the stability of that choice as precisely as the canonical 20 samples,
     so the two are not interpreted as equally stable.
@@ -81,10 +84,10 @@ premise of the follow-up work before any detection method is designed.
 - **Secondary condition: explicit cue.** `ASK_INSTRUCTIONS_EXPLICIT`
   replaces the option sentence with an explicit ambiguity cue: "If the
   delegation could reasonably mean more than one of the operations
-  available in the runtime context, ask …". It is run on the same pairs
-  (1,600 calls) and analysed separately from the main condition. It
-  measures how sensitive asking is to the prompt.
-- **Total: 3,200 calls.**
+  available in the runtime context, ask …". It is run on the same pairs and
+  analysed separately from the main condition. It measures how sensitive
+  asking is to the prompt.
+- **Total: 1,600 calls per stage, 3,200 for both stages.**
 - **No Planner Agent call.** Questions are recorded but not answered, and
   nothing is executed.
 
@@ -107,16 +110,38 @@ therefore not given as reasons after the fact. The Planner Agent model has
 been `gpt-4o-mini` since the first experiment, and the reason for that
 choice is not recorded either.
 
-**Why this experiment uses the same four.** The design is paired: each
-(delegation text, model) pair is compared with the same pair under forced
-choice. With the same models and delegations, the two conditions differ
-only in the prompt. All four models are kept, including those with few
-irreversible misinterpretations in the canonical results. Models are not
-selected by those results. The effect of the option is therefore examined
-in every model, which also shows whether it is specific to some models.
-Models are not ranked against each other. Each is compared with its own
-forced-choice result, because two of them run at provider-default
-sampling.
+**Why this experiment uses the canonical models.** The design is paired:
+each (delegation text, model) pair is compared with the same pair under
+forced choice. With the same models and delegations, the two conditions
+differ only in the prompt. Models are not ranked against each other. Each
+is compared with its own forced-choice result.
+
+### Stages
+
+- **Stage 1: `gpt-4o-mini` and `gpt-4.1`.**
+  - **Reason.** Both accept the canonical sampling settings, T=1.0 and
+    top_p=1.0. Stage 1 therefore runs under identical and known sampling.
+  - **Pinned versions.** Both are requested by dated IDs that served the
+    canonical collection.
+- **Stage 2, later: `gpt-5.5` and `gpt-6.1-sol`.**
+  - These run at provider-default sampling, because they reject T and
+    top_p.
+  - They use this plan unchanged. If stage 1 leads to any change in the
+    protocol, it is listed under "Deviations" before stage 2 is collected.
+
+**Limitations of stage 1.**
+
+- **The models are a subset.** Stage 1 tests two of the four models.
+- **The split was decided after the canonical results were known.** In
+  those results, the two stage-1 models had the most irreversible
+  misinterpretations: 26/40 and 30/40, against 18/40 and 1/40 for the
+  stage-2 models.
+- **Stage 1 alone cannot show how newer models behave.** It cannot say
+  whether newer models ask appropriately when given the option. So the last
+  interpretation in section 6, "the case for independent semantic
+  verification must be re-examined", cannot be ruled out before stage 2.
+- **Reporting.** Stage-1 results are reported as results for these two
+  models only.
 
 ### Model versions
 
@@ -138,6 +163,10 @@ cannot change the model. The canonical response records stay unchanged in
 - **Before collection.** `check_models.py --call` records, for each pinned
   ID and each alias, whether it can be called and which model serves it.
   The record goes to `results/clarification_option/raw/model_check.jsonl`.
+- **Check run on 2026-10-15, before any sample.** Every pinned ID could be
+  called and was served by the same model as in the canonical collection.
+  The aliases of `gpt-4o-mini`, `gpt-4.1` and `gpt-5.5` also still resolved
+  to those snapshots. `gpt-6.1-sol` was again served as `gpt-6.1-sol`.
 - **A dated ID is taken to be a fixed snapshot.** That is the provider's
   convention and cannot be verified from outside.
 - **`gpt-6.1-sol` cannot be pinned.** It was served without a date. Even if
@@ -173,8 +202,8 @@ correctly, and a clear one can be misread.
 
 ## 4. Unit and scoring
 
-The unit is a **pair**: (delegation text, Executor Agent model), 320 per
-prompt. No authorization configuration is involved, so pairs are not the
+The unit is a **pair**: (delegation text, Executor Agent model), 80 per
+model and prompt (160 in stage 1). No authorization configuration is involved, so pairs are not the
 canonical cells. Sample-level counts are kept alongside the pair-level
 results.
 
@@ -231,15 +260,16 @@ with the same measures. They are compared descriptively, side by side.
 6. **Exploratory: paired with forced choice.**
    - For the same pair, the forced-choice proposal is the modal of the
      first k = 5 canonical samples, so both conditions use the same number
-     of samples. On ambiguous delegations that baseline is 138/160 semantic
-     mismatches (27, 40, 38 and 33 per model). That differs from the
-     142/160 of section 1, which uses all 20 samples.
+     of samples. On ambiguous delegations that baseline is 67/80 semantic
+     mismatches in stage 1 (27 and 40), and 138/160 for all four models
+     (27, 40, 38 and 33). The latter differs from the 142/160 of section 1,
+     which uses all 20 samples.
    - Reported: the discordant counts, an exact McNemar test, and how many
      of the removed mismatches were removed by asking.
 
 **Statistics.** Exact 95% Clopper–Pearson intervals on pairs summarize the
-observed proportions only. They assume independent trials, but the 320
-pairs derive from 8 source delegations. **They do not express uncertainty
+observed proportions only. They assume independent trials, but the pairs
+derive from 8 source delegations. **They do not express uncertainty
 about new delegations.** Per-family counts are the main robustness view.
 McNemar tests are exploratory.
 
@@ -260,8 +290,9 @@ right.
 
 ## 7. Decisions
 
-- **All four canonical Executor Agent models,** requested by their pinned
-  IDs (section 2).
+- **Executor Agent models in two stages:** stage 1 is `gpt-4o-mini` and
+  `gpt-4.1`; stage 2, later, is `gpt-5.5` and `gpt-6.1-sol`. All are
+  requested by their pinned IDs (section 2).
 - **k = 5.** Not interpreted as equal in stability to the canonical k = 20
   (section 2).
 - **Explicit-cue condition included,** as a secondary condition analysed
@@ -291,11 +322,16 @@ right.
 
 ```bash
 PYTHONPATH=src python experiments/clarification_option/check_models.py --call  # 7 calls, before collection
-PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit --dry-run   # 3,200 calls
-PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit
+PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit --dry-run   # stage 1: 1,600 calls
+PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit            # stage 1
+PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit --models gpt-5.5 gpt-6.1-sol   # stage 2
 PYTHONPATH=src python experiments/clarification_option/analyze.py   # -> results/clarification_option/derived/
 ```
 
 ## Deviations
 
-(none yet)
+- **Amendment before collection, 2026-10-15.** The plan as first committed
+  (`ccb1333`) collected all four Executor Agent models at once. Before any
+  sample was collected, collection was split into two stages (section 2,
+  "Stages"). The reason: stage 1 uses only models whose sampling can be set
+  to the canonical T=1.0 and top_p=1.0. Nothing else changed.

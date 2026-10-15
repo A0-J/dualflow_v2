@@ -1,7 +1,8 @@
 """Analysis of the clarification-option experiment (PLAN.md section 5). 0 API calls.
 
-Unit: one pair = (delegation text, Executor Agent model), 80 x 4 = 320 per
-prompt variant. No authorization configuration is involved, so these are
+Unit: one pair = (delegation text, Executor Agent model), 80 per model and
+prompt variant. Only the models present in the data are analysed. No
+authorization configuration is involved, so these are
 not the canonical cells (scenario x model). Sample-level counts are kept
 alongside the pair-level results.
 
@@ -108,6 +109,7 @@ def main() -> None:
     samples = defaultdict(list)
     for r in raw:
         samples[(r["variant"], r["text_id"], r["model"])].append(r)
+    models = [m for m in EXECUTOR_MODELS if any(r["model"] == m for r in raw)]
     texts = {t["text_id"]: t for t in delegation_texts()}
     intended = {tid: Proposal.from_dict(DOMAINS[t["domain"]][t["clarity"]]["intended"]) for tid, t in texts.items()}
     rows = []
@@ -125,14 +127,15 @@ def main() -> None:
 
     say("## Model versions: served_model in this experiment vs the canonical collection")
     now, then = served_models(raw, "model"), served_models(read_jsonl(CANONICAL_SAMPLES), "model")
-    for model in EXECUTOR_MODELS:
-        same = "same" if now[model] == then[model] else "DIFFERENT"
+    for model in models:
+        same ="same" if now[model] == then[model] else "DIFFERENT"
         say(f"  {model:12s} {sorted(now[model])} vs {sorted(then[model])} -> {same}"
             + ("" if all(DATED.search(v) for v in now[model])
                else "  (undated: an identical name does not prove an identical version)"))
     say()
     say("Intervals: exact Clopper-Pearson on pairs, a descriptive summary only. Pairs derive from 8 source")
-    say("delegations and are not independent; per-family counts are the main robustness view.\n")
+    say("delegations and are not independent; per-family counts are the main robustness view.")
+    say(f"Executor Agent models in this data: {', '.join(models)}\n")
     for variant in sorted({r["variant"] for r in rows}):
         sub = [r for r in rows if r["variant"] == variant]
         amb = [r for r in sub if r["clarity"] == "ambiguous"]
@@ -161,11 +164,11 @@ def main() -> None:
 
         say("\n## Per Executor Agent model (pairs): asked | executed_intended | executed_mismatch")
         for name, rs in (("ambiguous", amb), ("clear", clr)):
-            for model in EXECUTOR_MODELS:
-                ms = [r for r in rs if r["executor_model"] == model]
+            for model in models:
+                ms =[r for r in rs if r["executor_model"] == model]
                 say(f"  {name:9s} {model:12s} " + " | ".join(f"{count(ms, c):2d}/{len(ms)}" for c in CATEGORIES))
 
-        say("\n## Per source family (10 texts x 4 models): asked | executed_intended | executed_mismatch")
+        say(f"\n## Per source family (10 texts x {len(models)} models): asked | executed_intended | executed_mismatch")
         for family in sorted({r["family"] for r in sub}):
             fs = [r for r in sub if r["family"] == family]
             say(f"  {family:22s} " + " | ".join(f"{count(fs, c):2d}" for c in CATEGORIES))

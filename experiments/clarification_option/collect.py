@@ -46,6 +46,9 @@ MODEL_IDS = {
     "gpt-5.5": "gpt-5.5-2026-04-23",
     "gpt-6.1-sol": "gpt-6.1-sol",
 }
+# Collected in stages (PLAN.md section 2): first the two models whose sampling can be
+# set to the canonical T=1.0 / top_p=1.0, later gpt-5.5 and gpt-6.1-sol.
+STAGE_1_MODELS = ("gpt-4o-mini", "gpt-4.1")
 
 
 def unit_key(text_id, model, variant, i):
@@ -55,6 +58,7 @@ def unit_key(text_id, model, variant, i):
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--samples", type=int, default=N_SAMPLES)
+    p.add_argument("--models", nargs="+", choices=EXECUTOR_MODELS, default=list(STAGE_1_MODELS))
     p.add_argument("--variants", nargs="+", choices=("neutral", "explicit"), default=["neutral"])
     p.add_argument("--workers", type=int, default=32)
     p.add_argument("--output", default=str(SAMPLES))
@@ -65,9 +69,9 @@ def main() -> None:
     texts = delegation_texts()[: args.limit_texts] if args.limit_texts else delegation_texts()
     out = Path(args.output)
     done = {r["unit_key"] for r in read_jsonl(out)} if out.exists() else set()
-    units = [(t, m, v, i) for t in texts for m in EXECUTOR_MODELS for v in args.variants for i in range(args.samples)]
+    units = [(t, m, v, i) for t in texts for m in args.models for v in args.variants for i in range(args.samples)]
     units = [u for u in units if unit_key(u[0]["text_id"], u[1], u[2], u[3]) not in done]
-    print(f"texts={len(texts)} models={len(EXECUTOR_MODELS)} variants={args.variants} samples={args.samples} "
+    print(f"texts={len(texts)} models={args.models} variants={args.variants} samples={args.samples} "
           f"already_done={len(done)} to_run={len(units)} calls")
     if args.dry_run or not units:
         return
@@ -76,7 +80,7 @@ def main() -> None:
     from openai import OpenAI
 
     sdk = OpenAI(max_retries=8, timeout=120)
-    clients = {m: OpenAILLMClient(sdk, MODEL_IDS[m], **sampling_for(m)) for m in EXECUTOR_MODELS}
+    clients = {m: OpenAILLMClient(sdk, MODEL_IDS[m], **sampling_for(m)) for m in args.models}
     lock = threading.Lock()
     counters = {"ok": 0, "failed": 0, "asked": 0}
 

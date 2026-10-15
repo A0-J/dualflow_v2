@@ -335,3 +335,44 @@ PYTHONPATH=src python experiments/clarification_option/analyze.py   # -> results
   sample was collected, collection was split into two stages (section 2,
   "Stages"). The reason: stage 1 uses only models whose sampling can be set
   to the canonical T=1.0 and top_p=1.0. Nothing else changed.
+- **Analysis amendments, 2026-10-15, after stage-1 collection.** During
+  collection, 206 attempts failed the output-format validation, all of
+  them by writing an action name into `decision` (for example
+  `"decision":"send_external"`). The canonical forced-choice prompt had no
+  such failures.
+  - 80 units passed on a retry.
+  - 24 units failed all four attempts. All were `gpt-4o-mini` on ambiguous
+    delegations.
+
+  The amendments:
+  1. **Baseline sample count.** `analyze.py` took the canonical baseline's
+     sample count from the smallest number of valid samples in any pair. It
+     now uses the 5 canonical samples set in section 2. The modal rule and
+     its tie-breaking (earliest sample) are unchanged.
+  2. **Primary analysis (A).** Responses that fail the planned output-format
+     validation remain invalid. Units with no valid response after the
+     permitted retries are reported separately as unparseable. The scoring
+     rules are unchanged. A pair whose valid samples split evenly between
+     asking and executing (possible only when samples are missing) counts
+     as execute, as in the committed code; the number of such pairs is
+     reported.
+  3. **Post-hoc sensitivity analysis (B).** This checks for selection by
+     retries. It uses the first attempt of every unit.
+     - A first attempt that failed validation is read as an execution
+       proposal only when all of the following hold: its `decision` is one
+       of the four action names; it equals its `action`; and its `resource`
+       and `scope` are listed in the runtime context.
+     - Any other invalid first attempt remains unparseable.
+     - The raw records are not modified.
+  4. **Reporting.** By model and delegation type, the analysis reports:
+     - the first-attempt failure rate;
+     - the total number of failed attempts;
+     - units kept after a retry;
+     - unparseable units under A and under B.
+
+     A and B are presented together, including any differences in
+     conclusions. Because the missing units are concentrated in
+     `gpt-4o-mini` on ambiguous delegations, B is the main check on the
+     robustness of conclusions about that model.
+  5. **No further collection.** The prompts, model versions and conditions
+     are unchanged.

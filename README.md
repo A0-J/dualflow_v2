@@ -28,6 +28,8 @@ anything runs, two independent checks run on it:
 | `experiments/canonical/` | The paper's evaluation (canonical cases C1–C4) |
 | `experiments/human_validation/` | Annotation kit and analysis for the intended-task labels (annotations not yet collected) |
 | `experiments/end_to_end/` | Smoke runner for the end-to-end runtime |
+| `experiments/ambiguity_screening/` | Post-hoc screening of ambiguity signals on the canonical samples |
+| `experiments/clarification_option/` | Planned experiment: Executor Agent with the option to ask |
 | `results/canonical/` | Raw samples and derived tables of the paper's evaluation |
 | `figures/` | `dualflow_architecture.png`, `canonical_results.png` (Figure 2) |
 
@@ -161,6 +163,55 @@ end-to-end data is collected:
 
 The `ExecutorAgent.propose` and `PlannerAgent.restate` instructions are the
 frozen ones from the paper's evaluation.
+
+## Follow-up: ambiguity the Executor Agent does not notice
+
+**The problem.** The follow-up work studies an Executor Agent that misreads
+an ambiguous delegation and is confident about it. Under forced choice, the
+canonical data show this for every model. On the 40 ambiguous delegation
+texts:
+
+- the Executor Agent proposed an operation other than the intended one in
+  142 of 160 (text, model) pairs;
+- the Consistency-based Gate let 72 of the 75 irreversible
+  misinterpretations through.
+
+The planned approach is to detect the ambiguity before a proposal is made,
+and to ask the Planner Agent only about the facets that are unclear.
+DualFlow remains the final gate.
+
+**Post-hoc signal screening** (`experiments/ambiguity_screening/`, 0 API
+calls). This asks which signals, computed from the existing canonical
+samples, separate the ambiguous delegations from the clear ones:
+
+- the Executor Agent's own entropy flags 0 of 40;
+- disagreement across the four models flags 39 of 40, but depends on which
+  models are included;
+- the Planner Agent's context shift flags 28 of 40 and misses the legal
+  family.
+
+The labels are design labels, and the 80 texts are a development set.
+
+```bash
+PYTHONPATH=src python experiments/ambiguity_screening/screen_signals.py   # -> results/ambiguity_screening/derived/
+```
+
+**Clarification-option experiment** (`experiments/clarification_option/`,
+planned, not yet run). The canonical Executor Agent could not say that a
+delegation was unclear. This experiment gives it the option to ask the
+Planner Agent, on the same 80 texts and four pinned models. It measures:
+
+- how often unqueried semantic mismatches remain;
+- how often the Executor Agent asks about clear delegations;
+- whether the facets it names are the ones left open.
+
+The plan, `PLAN.md`, is committed before collection.
+
+```bash
+PYTHONPATH=src python experiments/clarification_option/check_models.py --call   # 7 calls: which model serves each ID
+PYTHONPATH=src python experiments/clarification_option/collect.py --variants neutral explicit   # 3,200 calls
+PYTHONPATH=src python experiments/clarification_option/analyze.py
+```
 
 ## Earlier exploratory experiments
 

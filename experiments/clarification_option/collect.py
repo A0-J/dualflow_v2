@@ -36,6 +36,17 @@ SAMPLES = RAW / "samples.jsonl"
 N_SAMPLES = 5
 MAX_ATTEMPTS = 4
 
+# Model ID requested per Executor Agent model: the served_model that the API
+# returned for it in the canonical collection (results/canonical/raw/samples.jsonl).
+# The dated IDs request that snapshot directly; gpt-6.1-sol was served without a
+# date, so its version cannot be pinned (PLAN.md section 2).
+MODEL_IDS = {
+    "gpt-4o-mini": "gpt-4o-mini-2024-07-18",
+    "gpt-4.1": "gpt-4.1-2025-04-14",
+    "gpt-5.5": "gpt-5.5-2026-04-23",
+    "gpt-6.1-sol": "gpt-6.1-sol",
+}
+
 
 def unit_key(text_id, model, variant, i):
     return f"executor_option|{text_id}|{model}|{variant}|{i}"
@@ -65,7 +76,7 @@ def main() -> None:
     from openai import OpenAI
 
     sdk = OpenAI(max_retries=8, timeout=120)
-    clients = {m: OpenAILLMClient(sdk, m, **sampling_for(m)) for m in EXECUTOR_MODELS}
+    clients = {m: OpenAILLMClient(sdk, MODEL_IDS[m], **sampling_for(m)) for m in EXECUTOR_MODELS}
     lock = threading.Lock()
     counters = {"ok": 0, "failed": 0, "asked": 0}
 

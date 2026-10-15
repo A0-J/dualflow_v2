@@ -90,7 +90,8 @@ Use exactly one action, one resource path, and one scope label from the
 runtime context. Choose the operation the delegation asks for. Do not
 invent hidden intent."""
 
-    # INSTRUCTIONS plus the option to ask; every other sentence is unchanged.
+    # Keeps the canonical interpretation sentences of INSTRUCTIONS and extends the
+    # response options and output format: a "decision" field and a second schema for asking.
     _ASK_TEMPLATE = """You are the executor agent. Interpret the delegation you received into one concrete operation to perform. {option}
 Return exactly one JSON object with one of these two schemas and no prose:
 {{"decision":"execute","action":"...","resource":"...","scope":"..."}}

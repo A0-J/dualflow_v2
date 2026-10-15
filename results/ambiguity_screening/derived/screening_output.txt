@@ -1,0 +1,30 @@
+delegation texts=80; with a semantic mismatch by >=1 Executor Agent model: ambiguous 40/40, clear 1/40
+
+signal                 AUROC  flagged ambiguous | flagged clear  (illustrative rule)
+self_entropy_mean       0.84         0/40     |    0/40       (mean entropy > 0.8 bits)
+cross_model_distinct    0.98        39/40     |    1/40       (>= 2 distinct modal proposals)
+reader_disagreement     0.97        39/40     |    1/40       (any model differs from context-free reading)
+context_shift_tv        0.87        28/40     |    1/40       (TV distance >= 0.5)
+context_shift_modal     0.84        28/40     |    1/40       (modal restatement changes with C_task)
+
+per source family (10 texts): cross_model_distinct>=2 | context_shift_modal | texts with a semantic mismatch
+  audit_ambiguous        10 | 10 | 10
+  audit_clear             0 |  0 |  0
+  hr_ambiguous            9 | 10 | 10
+  hr_clear                0 |  0 |  0
+  incident_ambiguous     10 |  8 | 10
+  incident_clear          0 |  0 |  0
+  legal_ambiguous        10 |  0 | 10
+  legal_clear             1 |  1 |  1
+
+cross-model disagreement without one model (ambiguous / clear texts flagged)
+  without gpt-4o-mini  31/40 |  0/40
+  without gpt-4.1      39/40 |  1/40
+  without gpt-5.5      39/40 |  1/40
+  without gpt-6.1-sol  26/40 |  1/40
+
+one Executor Agent plus one second reader: its semantic mismatches on ambiguous texts that the second reader disagrees with
+  gpt-4o-mini  mismatches 27 -> gpt-4.1: 2, gpt-5.5: 12, gpt-6.1-sol: 26, planner_no_context: 1
+  gpt-4.1      mismatches 40 -> gpt-4o-mini: 15, gpt-5.5: 14, gpt-6.1-sol: 31, planner_no_context: 13
+  gpt-5.5      mismatches 40 -> gpt-4o-mini: 25, gpt-4.1: 14, gpt-6.1-sol: 23, planner_no_context: 24
+  gpt-6.1-sol  mismatches 35 -> gpt-4o-mini: 34, gpt-4.1: 26, gpt-5.5: 18, planner_no_context: 34

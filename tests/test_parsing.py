@@ -41,3 +41,17 @@ def test_parse_delegation():
     assert parse_delegation('```json\n{"delegation": " Summarize the Q3 report. "}\n```') == "Summarize the Q3 report."
     with pytest.raises(ValueError, match="Missing delegation"):
         parse_delegation('{"delegation": ""}')
+
+
+def test_parse_executor_turn():
+    from dualflow.roles import parse_executor_turn
+    p, q, unclear = parse_executor_turn(
+        '{"decision": "execute", "action": "summarize", "resource": "audit/q3_raw_report.txt", "scope": "internal"}')
+    assert p.action == "summarize" and q is None and unclear == ()
+    p, q, unclear = parse_executor_turn(
+        '```json\n{"decision": "ASK", "question": "Send it, or summarize it?", "unclear": ["Scope", "action", "x"]}\n```')
+    assert p is None and q == "Send it, or summarize it?" and unclear == ("action", "scope")
+    for bad in ('{"decision": "execute", "action": "read"}', '{"decision": "ask", "question": ""}',
+                '{"decision": "maybe"}', '{"decision": "ask", "question": "q", "unclear": "action"}'):
+        with pytest.raises(ValueError):
+            parse_executor_turn(bad)

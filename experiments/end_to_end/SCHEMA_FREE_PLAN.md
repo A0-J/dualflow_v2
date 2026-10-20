@@ -41,3 +41,26 @@ the simplest required/forbidden effect-set baseline. This cannot establish
 goal completion for multi-step tasks. It also does not prove tool manifests
 correct, replace the Authorization gate, or handle partial side effects.
 Do not use as a drop-in security gate before extending those properties.
+
+## Safety assessment amendment (2026-10-20)
+
+The first scaffold incorrectly treated all effects not explicitly forbidden
+as safe. Replaced it with a fail-closed irreversible effect allowlist:
+`irreversible(proposed) <= irreversible(required | permitted)`, together
+with the forbidden-effect exclusion. Unknown effect kinds, malformed resource
+identifiers and recipients are invalid. Unknown tool IDs raise explicit
+denial errors. Goal coverage remains a separate result, and callers must
+require both safety and goal coverage if enforcing one-step completion.
+
+Regression cases: wrong export resource, wrong recipient, legitimate summary
+combined with an unauthorized export, and legitimate summary combined with
+an unauthorized delete. An allowlisted external send is also tested.
+
+This is a trusted-predicted-effect prototype only. The complete tool effect
+set must be present; undeclared runtime effects cannot be inferred or
+prevented by this evaluator. It is not yet part of the runtime gate.
+
+The earlier canonical effect re-scoring code under
+`experiments/effect_level_verification/` was not present on this PR
+branch at the time of this amendment. Integrate it by importing the single
+shared decision rule rather than implementing a separate safety check.

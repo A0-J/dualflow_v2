@@ -2,18 +2,20 @@
 
 Inputs (under results/schema_free/main_eval/): planner.jsonl (phase A), the checker runs on the
 natural contracts and on the mutations (check_consistency.py with --contracts and --out), and the
-hand labels of the delegations (labels/main_delegations.json, written after phase A and before any
-checker run).
+hand labels of the delegations (labels/main_delegations.json, written from the delegation texts
+alone, before any checker run; uncertain labels are flagged and reported apart).
 
 Two references are kept apart:
   intent preservation  the contract against the task's ground truth (what the Planner Agent intends)
   local consistency    the contract against the effects the delegation d itself asks for (hand label)
 They differ only where d does not preserve the intent; such tasks are reported separately.
 
-Mutations measure detection by error type; natural contracts measure how often errors occur and
-what the checker does with them. Rates are given per contract with a Wilson 95% interval and a
-task-cluster bootstrap 95% interval (contracts of one task are not independent), and per task and
-per domain.
+Primary statistics are per task (the contracts of one task are not independent): the mean over tasks
+of each task's rate, with a bootstrap 95% interval over tasks, and the number of tasks with any miss
+or any false alarm. Per-contract rates with Wilson intervals are secondary.
+
+A stop without a reference counts as a False Rejection only if a contract that is in fact correct
+was held; when every sample was wrong, the stop is justified.
 
     PYTHONPATH=src python experiments/schema_free/eval_consistency.py [--checks natural_v2 mutations_v2]
 """
@@ -41,6 +43,7 @@ from tasks import MAIN_TASKS, domain_of  # noqa: E402
 EVAL = ROOT / "results" / "schema_free" / "main_eval"
 LABELS = Path(__file__).resolve().parent / "labels" / "main_delegations.json"
 TASKS = {t.task_id: t for t in MAIN_TASKS}
+REPS = 2000
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -51,30 +54,35 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return (max(0.0, c - h), min(1.0, c + h))
 
 
-def cluster_ci(rows: list[tuple[str, bool]], reps: int = 2000, seed: int = 0) -> tuple[float, float]:
-    """Bootstrap over tasks: resample tasks with replacement, pool their contracts."""
-    by_task = defaultdict(list)
+def by_task(rows: list[tuple[str, bool]]) -> dict[str, list[bool]]:
+    out = defaultdict(list)
     for tid, x in rows:
-        by_task[tid].append(x)
-    ids = sorted(by_task)
-    if not ids:
-        return (math.nan, math.nan)
-    rng, stats = random.Random(seed), []
-    for _ in range(reps):
-        pick = [x for t in (rng.choice(ids) for _ in ids) for x in by_task[t]]
-        stats.append(sum(pick) / len(pick))
-    stats.sort()
-    return (stats[int(0.025 * reps)], stats[int(0.975 * reps) - 1])
+        out[tid].append(x)
+    return out
+
+
+def bootstrap(ids: list[str], stat, seed: int = 0) -> tuple[float, float]:
+    rng, values = random.Random(seed), []
+    for _ in range(REPS):
+        values.append(stat([rng.choice(ids) for _ in ids]))
+    values.sort()
+    return (values[int(0.025 * REPS)], values[int(0.975 * REPS) - 1])
 
 
 def rate(name: str, rows: list[tuple[str, bool]]) -> str:
+    """Task level first (primary), then per contract (secondary)."""
+    if not rows:
+        return f"  {name:32s} -"
+    groups = by_task(rows)
+    ids = sorted(groups)
+    task_rate = {t: sum(v) / len(v) for t, v in groups.items()}
+    mean = sum(task_rate.values()) / len(ids)
+    lo, hi = bootstrap(ids, lambda pick: sum(task_rate[t] for t in pick) / len(pick))
     k, n = sum(x for _, x in rows), len(rows)
-    if n == 0:
-        return f"  {name:34s} -"
-    lo, hi = wilson(k, n)
-    clo, chi = cluster_ci(rows)
-    return (f"  {name:34s} {k:3d}/{n:<3d} = {k / n:5.1%}  Wilson [{lo:.1%}, {hi:.1%}]  "
-            f"task bootstrap [{clo:.1%}, {chi:.1%}]  ({len({t for t, _ in rows})} tasks)")
+    wlo, whi = wilson(k, n)
+    return (f"  {name:32s} task mean {mean:5.1%} [{lo:.1%}, {hi:.1%}]; tasks with any {sum(any(v) for v in groups.values())}"
+            f"/{len(ids)}, with all {sum(all(v) for v in groups.values())}/{len(ids)} | contracts {k}/{n} = {k / n:.1%} "
+            f"Wilson [{wlo:.1%}, {whi:.1%}]")
 
 
 def effect(text: str) -> Effect:
@@ -103,9 +111,10 @@ def load_labels() -> dict[str, dict]:
     out = {}
     for tid, v in raw.items():
         t = TASKS[tid]
-        implied = t.truth if v.get("same_as_truth") else IntentContract(
-            frozenset(map(effect, v["implied_required"])), frozenset(), frozenset(map(effect, v.get("implied_permitted", []))))
-        out[tid] = {"implied": implied, "preserves_intent": goal(implied) == goal(t.truth), "note": v.get("note", "")}
+        implied = IntentContract(frozenset(map(effect, v["implied_required"])), frozenset(),
+                                 frozenset(map(effect, v.get("implied_permitted", []))))
+        out[tid] = {"implied": implied, "preserves_intent": goal(implied) == goal(t.truth),
+                    "uncertain": bool(v.get("uncertain")), "note": v.get("note", "")}
     return out
 
 
@@ -118,38 +127,51 @@ def checks(name: str) -> list[dict]:
     return rows
 
 
+def unsafe(r: dict) -> bool:
+    return bool(classify(r["_contract"], TASKS[r["task_id"]])["admits_unintended"])
+
+
 def mutation_report(rows: list[dict], labels: dict[str, dict]) -> None:
-    print(f"\n### Mutations: detection by error type ({len(rows)} contracts, "
-          f"{len({r['task_id'] for r in rows})} tasks)")
-    keep = {tid for tid, v in labels.items() if v["preserves_intent"]} if labels else set(TASKS)
+    print(f"\n### Mutations: detection by error type ({len(rows)} contracts, {len({r['task_id'] for r in rows})} tasks)"
+          "\nheld = not passed (held by schema, by the checker, or unparseable). Against the ground truth;"
+          "\nwhere d preserves the intent this is also the reference for local consistency.")
+    keep = {t for t, v in labels.items() if v["preserves_intent"]} if labels else set(TASKS)
     for title, subset in (("tasks whose d preserves the intent", [r for r in rows if r["task_id"] in keep]),
                           ("all tasks", rows)):
-        print(f"\n[{title}]  held = not passed (held by schema, by the checker, or unparseable)")
-        types = sorted({r["mutation"] for r in subset}, key=lambda m: (m not in CONTROLS, m))
-        for m in types:
-            label = "false alarm" if m in CONTROLS else "detected"
+        print(f"\n[{title}]")
+        for m in sorted({r["mutation"] for r in subset}, key=lambda m: (m not in CONTROLS, m)):
+            label = "False Rejection" if m in CONTROLS else "detected"
             print(rate(f"{m} ({label})", [(r["task_id"], r["_held"]) for r in subset if r["mutation"] == m]))
         errors = [r for r in subset if r["mutation"] not in CONTROLS]
         print(rate("ALL ERRORS (detected)", [(r["task_id"], r["_held"]) for r in errors]))
-        print(rate("ALL CONTROLS (false alarm)", [(r["task_id"], r["_held"]) for r in subset if r["mutation"] in CONTROLS]))
-        unsafe = [r for r in errors if classify(r["_contract"], TASKS[r["task_id"]])["admits_unintended"]]
-        print(rate("unsafe contracts PASSED", [(r["task_id"], not r["_held"]) for r in unsafe]))
-    print("\nby domain (all tasks): detected errors | false alarms on controls")
+        print(rate("ALL CONTROLS (False Rejection)", [(r["task_id"], r["_held"]) for r in subset if r["mutation"] in CONTROLS]))
+        print(rate("unsafe contracts PASSED", [(r["task_id"], not r["_held"]) for r in errors if unsafe(r)]))
+    if labels and keep != set(TASKS):
+        print("\n[tasks whose d does not preserve the intent: against d's own effects (local consistency)]")
+        other = [r for r in rows if r["task_id"] not in keep]
+        for r in other:
+            r["_d_consistent"] = goal(r["_contract"]) == goal(labels[r["task_id"]]["implied"])
+        print(rate("consistent with d, held", [(r["task_id"], r["_held"]) for r in other if r["_d_consistent"]]))
+        print(rate("inconsistent with d, held", [(r["task_id"], r["_held"]) for r in other if not r["_d_consistent"]]))
+    print("\nby domain (all tasks): errors detected | controls held (False Rejection)")
     for dom in ("sales", "crm", "ops", "reports"):
         rs = [r for r in rows if domain_of(TASKS[r["task_id"]]) == dom]
         e = [r["_held"] for r in rs if r["mutation"] not in CONTROLS]
         c = [r["_held"] for r in rs if r["mutation"] in CONTROLS]
         print(f"  {dom:8s} {sum(e)}/{len(e)} | {sum(c)}/{len(c)}")
-    print("\nper task: errors detected, controls held  (* d does not preserve the intent)")
+    print("\nper task: errors detected, controls held  (* d does not preserve the intent, ? label uncertain)")
     for tid in TASKS:
         rs = [r for r in rows if r["task_id"] == tid]
         if rs:
             e = [r for r in rs if r["mutation"] not in CONTROLS]
             c = [r for r in rs if r["mutation"] in CONTROLS]
-            missed = sorted({r["mutation"] for r in e if not r["_held"]})
-            star = "*" if labels and not labels[tid]["preserves_intent"] else " "
-            print(f" {star}{tid:28s} {sum(r['_held'] for r in e):2d}/{len(e):<2d}  controls held "
-                  f"{sum(r['_held'] for r in c)}/{len(c)}" + (f"  missed: {', '.join(missed)}" if missed else ""))
+            missed = sorted(f"{r['mutation']} [{r['target']}]" for r in e if not r["_held"])
+            held_controls = sorted(r["mutation"] for r in c if r["_held"])
+            mark = ("*" if labels and not labels[tid]["preserves_intent"] else " ") + \
+                   ("?" if labels and labels[tid]["uncertain"] else " ")
+            print(f" {mark}{tid:28s} {sum(r['_held'] for r in e):2d}/{len(e):<2d} controls held {len(held_controls)}/{len(c)}"
+                  + (f"\n      missed: {'; '.join(missed)}" if missed else "")
+                  + (f"\n      controls held: {', '.join(held_controls)}" if held_controls else ""))
 
 
 def natural_report(rows: list[dict], labels: dict[str, dict]) -> None:
@@ -157,50 +179,62 @@ def natural_report(rows: list[dict], labels: dict[str, dict]) -> None:
     for r in rows:
         t = TASKS[r["task_id"]]
         r["_true"] = goal(r["_contract"]) == goal(t.truth)
-        r["_local"] = goal(r["_contract"]) == goal(labels[r["task_id"]]["implied"]) if labels else None
         r["_kind"] = classify(r["_contract"], t)["kind"]
+    print("[against the ground truth: intent preservation]")
     print(rate("contracts equal to the truth", [(r["task_id"], r["_true"]) for r in rows]))
-    print(rate("held, among contracts = truth", [(r["task_id"], r["_held"]) for r in rows if r["_true"]]))
-    print(rate("held, among contracts != truth", [(r["task_id"], r["_held"]) for r in rows if not r["_true"]]))
+    print(rate("held, among correct (False Rej.)", [(r["task_id"], r["_held"]) for r in rows if r["_true"]]))
+    print(rate("held, among wrong (detected)", [(r["task_id"], r["_held"]) for r in rows if not r["_true"]]))
+    print(rate("unsafe contracts PASSED", [(r["task_id"], not r["_held"]) for r in rows if unsafe(r)]))
+    certain = {t for t, v in labels.items() if not v["uncertain"]}
     if labels:
-        print(rate("contracts equal to d's effects", [(r["task_id"], r["_local"]) for r in rows]))
-        print(rate("held, among contracts = d", [(r["task_id"], r["_held"]) for r in rows if r["_local"]]))
-        print(rate("held, among contracts != d", [(r["task_id"], r["_held"]) for r in rows if not r["_local"]]))
-    unsafe = [r for r in rows if classify(r["_contract"], TASKS[r["task_id"]])["admits_unintended"]]
-    print(rate("unsafe contracts PASSED", [(r["task_id"], not r["_held"]) for r in unsafe]))
+        local = [r for r in rows if r["task_id"] in certain]
+        for r in local:
+            r["_local"] = goal(r["_contract"]) == goal(labels[r["task_id"]]["implied"])
+        print(f"[against d's own effects: local consistency; {len(certain)} tasks with a certain label]")
+        print(rate("contracts equal to d's effects", [(r["task_id"], r["_local"]) for r in local]))
+        print(rate("held, among = d (False Rej.)", [(r["task_id"], r["_held"]) for r in local if r["_local"]]))
+        print(rate("held, among != d (detected)", [(r["task_id"], r["_held"]) for r in local if not r["_local"]]))
     kinds = defaultdict(list)
     for r in rows:
         kinds[r["_kind"]].append(r)
-    print("  error types vs truth (held by schema / by checker / passed): " + "; ".join(
+    print("  error types vs truth (held by schema / held by checker / passed): " + "; ".join(
         f"{k} {sum(r['decision'] == 'held by schema' for r in v)}/{sum(r['decision'] == 'hold' for r in v)}/"
         f"{sum(r['decision'] == 'pass' for r in v)}" for k, v in sorted(kinds.items())))
 
-    print("\nper task (independent samples): reference = modal of the samples that pass each filter;"
-          "\nno sample left = explicit stop. The intended plan's effects are gated against the reference.")
+    print("\nper task, independent samples: reference = modal of the samples that pass each filter. Outcome for"
+          "\nthe intended plan: runs; False Rejection (wrong reference, or a stop although a held sample was"
+          "\ncorrect); justified stop (no sample left and every sample wrong). 'admits' = the reference allows"
+          "\nan unintended irreversible effect.")
     filters = {"none": lambda r: True, "schema": lambda r: not r["schema_problems"],
                "schema + d-contract": lambda r: not r["_held"]}
     for name, keep in filters.items():
-        done = stopped = exposed = 0
+        runs = false_rej = justified = admits = 0
         for tid, t in TASKS.items():
-            pool = [r["_contract"] for r in rows if r["task_id"] == tid and r["role"] == "independent" and keep(r)]
-            if not [r for r in rows if r["task_id"] == tid]:
+            mine = [r for r in rows if r["task_id"] == tid and r["role"] == "independent"]
+            if not mine:
                 continue
+            pool = [r["_contract"] for r in mine if keep(r)]
             if not pool:
-                stopped += 1
+                false_rej += any(r["_true"] for r in mine)
+                justified += not any(r["_true"] for r in mine)
                 continue
             ref = modal_contract(pool)
-            done += gate(ref, intended_plan(t), t.policy, t.state).execute
-            exposed += bool(classify(ref, t)["admits_unintended"])
-        print(f"  filter {name:20s} intended plan executes in {done}/{len(TASKS)} tasks; stopped {stopped}; "
-              f"reference admits an unintended irreversible effect in {exposed}")
-    print("\nper task: natural contracts = truth / held  (* d does not preserve the intent)")
+            ok = gate(ref, intended_plan(t), t.policy, t.state).execute
+            runs += ok
+            false_rej += not ok
+            admits += bool(classify(ref, t)["admits_unintended"])
+        print(f"  filter {name:20s} runs {runs}/{len(TASKS)}; False Rejection {false_rej}; justified stop {justified}; "
+              f"admits {admits}")
+    print("\nper task: natural contracts = truth, held among them; wrong ones held  (* d does not preserve the "
+          "intent, ? label uncertain)")
     for tid in TASKS:
         rs = [r for r in rows if r["task_id"] == tid]
         if rs:
-            star = "*" if labels and not labels[tid]["preserves_intent"] else " "
-            wrong = [r for r in rs if not r["_true"]]
-            print(f" {star}{tid:28s} = truth {sum(r['_true'] for r in rs)}/{len(rs)}; held among = truth "
-                  f"{sum(r['_held'] for r in rs if r['_true'])}, among != truth {sum(r['_held'] for r in wrong)}/{len(wrong)}"
+            mark = ("*" if labels and not labels[tid]["preserves_intent"] else " ") + \
+                   ("?" if labels and labels[tid]["uncertain"] else " ")
+            right, wrong = [r for r in rs if r["_true"]], [r for r in rs if not r["_true"]]
+            print(f" {mark}{tid:28s} = truth {len(right)}/{len(rs)}, held {sum(r['_held'] for r in right)}; "
+                  f"wrong held {sum(r['_held'] for r in wrong)}/{len(wrong)}"
                   + (f"  [{', '.join(sorted({r['_kind'] for r in wrong}))}]" if wrong else ""))
 
 
@@ -209,11 +243,13 @@ def main() -> None:
     p.add_argument("--checks", nargs=2, default=["natural_v2", "mutations_v2"], metavar=("NATURAL", "MUTATIONS"))
     args = p.parse_args()
     labels = load_labels()
-    print(f"delegation labels: {len(labels)} tasks" + (f", d preserves the intent in "
-          f"{sum(v['preserves_intent'] for v in labels.values())}" if labels else " (none yet: local consistency skipped)"))
+    print(f"checker runs: {args.checks}; delegation labels: {len(labels)} tasks"
+          + (f", d preserves the intent in {sum(v['preserves_intent'] for v in labels.values())}, uncertain "
+             f"{sum(v['uncertain'] for v in labels.values())}" if labels else " (none: local consistency skipped)"))
     for tid, v in labels.items():
-        if not v["preserves_intent"]:
-            print(f"  d does not preserve the intent: {tid}: {v['note']}")
+        if not v["preserves_intent"] or v["uncertain"]:
+            print(f"  {tid}: {'d does not preserve the intent' if not v['preserves_intent'] else ''}"
+                  f"{' (uncertain)' if v['uncertain'] else ''} {v['note']}")
     natural, mutated = checks(args.checks[0]), checks(args.checks[1])
     if natural:
         natural_report(natural, labels)

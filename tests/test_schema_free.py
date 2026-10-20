@@ -11,7 +11,8 @@ from dualflow.effect_contracts import Effect, IntentContract
 from dualflow.llm import LLMResponse
 from dualflow.schema_free import (
     CONDITIONS, EXECUTOR_TOOLS, MAX_ROUNDS, SchemaFreePlanner, Tool, ToolExecutor, Workspace, _brief_effects,
-    contract_to_json, gate, planner_outputs, run_episode, score, shared_plans, state_effects, summary_of,
+    EFFECT_VOCABULARIES, EFFECT_VOCABULARY, contract_schema_problems, contract_to_json, gate, planner_outputs,
+    run_episode, score, shared_plans, state_effects, summary_of,
 )
 
 _path = Path(__file__).resolve().parents[1] / "experiments" / "schema_free" / "tasks.py"
@@ -259,3 +260,27 @@ def test_terse_source_forwards_the_request_verbatim_and_leaves_contract_conditio
     executor_inputs = llm.inputs(ToolExecutor.INSTRUCTIONS)
     tails = {i.split("\n\nShared catalog:")[1] for i in executor_inputs}
     assert len(tails) == 1  # catalog and tools are identical for every message; only the task differs
+
+
+def test_contract_vocabulary_is_chosen_per_planner_and_v3_names_the_summary_path():
+    task = TASKS["dev_hr_composite"]
+    llm = ScriptedLLM(contracts=[task.truth], plan=lambda text: [])
+    for planner, text in ((SchemaFreePlanner(llm), EFFECT_VOCABULARY),
+                          (SchemaFreePlanner(llm, vocabulary=EFFECT_VOCABULARIES["v3"]), EFFECT_VOCABULARIES["v3"])):
+        planner.contract(user_request=task.user_request, private_context=task.private_context, catalog=task.catalog())
+        assert json.loads(llm.inputs(SchemaFreePlanner.CONTRACT)[-1])["shared_catalog"].endswith(text)
+    assert EFFECT_VOCABULARIES["v3"] == EFFECT_VOCABULARY  # interface v3 is the default
+    assert f"internal_write {summary_of('<file>')}" in EFFECT_VOCABULARIES["v3"]
+
+
+def test_contract_schema_validation_checks_form_not_meaning():
+    task = TASKS["dev_hr_composite"]
+    c = lambda *es: IntentContract(frozenset(es), frozenset())  # noqa: E731
+    assert contract_schema_problems(task.truth, task) == []
+    # a summary path without its suffix is not in the catalog
+    assert contract_schema_problems(c(Effect("internal_write", "summaries/" + EXPORT)), task)
+    # internal_write on the source file is well-formed although the intent was its summary
+    assert contract_schema_problems(c(Effect("internal_write", EXPORT)), task) == []
+    assert contract_schema_problems(c(Effect("external_send", EXPORT, "nobody")), task)
+    assert contract_schema_problems(c(Effect("delete", EXPORT, "benefits_vendor")), task)
+    assert contract_schema_problems(c(Effect("archive", EXPORT)), task)

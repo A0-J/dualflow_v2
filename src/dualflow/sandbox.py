@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .flows import Proposal, _norm
+from .flows import Proposal, _norm, safe_resource_path
 
 EXTERNAL_PREFIX = "external:"
 
@@ -57,6 +57,8 @@ class Sandbox:
         return path
 
     def _resource_path(self, resource: str) -> Path:
+        if not safe_resource_path(resource):
+            raise ValueError(f"path escapes the sandbox or is noncanonical: {resource}")
         return self._inside(self.root / "files" / resource, self.root / "files")
 
     def execute(self, proposal: Proposal) -> ToolResult:

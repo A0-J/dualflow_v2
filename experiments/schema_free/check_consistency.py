@@ -65,6 +65,7 @@ DEV_CONTRACTS = RESULTS / "reconstruction_v3" / "contracts.jsonl"
 OUT = {"v1": RESULTS / "consistency_v3_2", "v2": RESULTS / "consistency_v2_dev"}
 VOCABULARY = "v3"
 CALL_CAP = 1000  # runaway guard only
+LABELS = Path(__file__).resolve().parent / "labels" / "main_delegations.json"  # hash recorded in each run
 TASKS = {t.task_id: t for t in DEV_TASKS + MAIN_TASKS}
 
 INTRO = ("You compare two descriptions of one delegated task, both written by the same planner agent: the "
@@ -164,9 +165,9 @@ class Checker:
         self.llm, self.vocabulary = llm, vocabulary
         self.prompt, self.parse, self.decide = CHECKERS[version]
 
-    def check(self, *, delegation: str, contract: IntentContract, catalog: str) -> tuple[dict | None, Any, list]:
+    def check(self, *, delegation: str, lines: list[str], catalog: str) -> tuple[dict | None, Any, list]:
         """Up to MAX_ATTEMPTS calls; every unparseable output is kept in full."""
-        lines, failed = effect_lines(contract), []
+        failed: list[dict] = []
         for _ in range(MAX_ATTEMPTS):
             r = self.llm.generate(instructions=self.prompt, input_text=json.dumps(
                 {"delegation_message": delegation, "contract_effects": lines,
@@ -257,6 +258,8 @@ def analyze(records: list[dict], decide=None, title: str = "") -> None:
 
 
 def show(records: list[dict], task_id: str) -> None:
+    if not any(r["type"] == "check" and r["task_id"] == task_id for r in records):
+        return
     print(f"\n{task_id}: checker output per contract")
     for r in records:
         if r["type"] == "check" and r["task_id"] == task_id:
@@ -328,20 +331,24 @@ def main() -> None:
                                            "shared_catalog", f"effect vocabulary {VOCABULARY}"],
                         "schema_screen_first": args.checker == "v2",
                         "prompt": checker.prompt, "decision_rule": RULES[args.checker], "cap": args.cap,
-                        "delegations": rel(delegations), "contracts": rel(contracts)})
+                        "delegations": rel(delegations), "contracts": rel(contracts),
+                        "delegation_labels_sha256": (hashlib.sha256(LABELS.read_bytes()).hexdigest()
+                                                     if LABELS.exists() else None)})
     try:
         for r in items:
             task, contract = TASKS[r["task_id"]], parse_contract(json.dumps(r["contract"]))
             rec = {"type": "check", "task_id": r["task_id"], "index": r["index"], "role": r["role"],
+                   **{k: r[k] for k in ("mutation", "target", "presentation") if k in r},
                    "contract": r["contract"], "delegation": r["delegation"],
                    "schema_problems": contract_schema_problems(contract, task)}
+            lines = effect_lines(contract)[::-1] if r.get("presentation") == "reversed" else effect_lines(contract)
             if not screened(r):
                 rec.update(check=None, decision="held by schema", failed_attempts=[], response=None)
             else:
-                check, response, failed = checker.check(delegation=r["delegation"], contract=contract,
+                check, response, failed = checker.check(delegation=r["delegation"], lines=lines,
                                                         catalog=task.catalog())
-                rec.update(check=check, decision="pass" if check and checker.decide(check, effect_lines(contract))
-                           else "hold", failed_attempts=failed, response=response.to_dict() if response else None)
+                rec.update(check=check, decision="pass" if check and checker.decide(check, lines) else "hold",
+                           failed_attempts=failed, response=response.to_dict() if response else None)
             append_jsonl(path, rec)
         print(f"calls used (retries included): {counter['calls']}")
     except CallBudgetExceeded as e:

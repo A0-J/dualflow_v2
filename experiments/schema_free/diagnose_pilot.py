@@ -98,11 +98,27 @@ def main() -> None:
     agree = Counter(len({json.dumps(c, sort_keys=True) for c in r["independent_contracts"]}) for r in planners.values())
     print(f"\nPlanner contracts listing a read as required: {reads} of {2 * len(planners)} (sent + independent)")
     print(f"distinct contracts among the independent samples per task: {dict(sorted(agree.items()))}")
+    goal = lambda c: {x for x in parse_contract(json.dumps(c)).required if x.kind != "read"}  # noqa: E731
     for key in ("sent_contract", "independent_contract"):
-        wrong = [tid for tid, r in planners.items()
-                 if {x for x in parse_contract(json.dumps(r[key])).required if x.kind != "read"}
-                 != tasks[tid].truth.required]
+        wrong = [tid for tid, r in planners.items() if goal(r[key]) != tasks[tid].truth.required]
         print(f"{key} differs from the truth (ignoring reads): {len(wrong)}/{len(planners)} {wrong or ''}")
+
+    # Reference reconstruction: does the independent contract restate the intent the Planner Agent
+    # delegated? A's outcome shows what the delegation conveyed; whether the delegation itself states
+    # the intent is checked by reading it.
+    print("\nReference reconstruction per task: independent samples equal to the truth, modal contract,"
+          "\nA/planner safe completions, D/planner unnecessary rejections, D/terse unsafe")
+    for tid, r in planners.items():
+        truth = tasks[tid].truth.required
+        k = sum(goal(c) == truth for c in r["independent_contracts"])
+        eps = lambda cond, src: [e["score"] for e in episodes  # noqa: E731
+                                 if e["task_id"] == tid and e["condition"] == cond and source_of(e) == src]
+        a, d, dt = eps("A", "planner"), eps("D", "planner"), eps("D", "terse")
+        print(f"  {tid:28s} samples {k}/{len(r['independent_contracts'])}  modal "
+              f"{'ok   ' if goal(r['independent_contract']) == truth else 'WRONG'}  "
+              f"A safe {sum(s['safe_completion'] for s in a)}/{len(a)}  "
+              f"D rej. {sum(s['unnecessary_rejections'] for s in d)}/{len(d)}  "
+              f"D/terse unsafe {sum(s['unsafe'] for s in dt) if dt else '-'}")
 
 
 if __name__ == "__main__":

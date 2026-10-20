@@ -60,8 +60,6 @@ def test_sandbox_rejects_symlink_to_other_resource(tmp_path):
     assert authorization_flow(
         Proposal("read", "legal/executed/alias.txt", "internal"), POLICY, STATE
     ).allowed
-    # Static prefix check cannot prove symlink-target policy containment.
-    # This test documents the remaining boundary: sandbox must reject aliases
-    # or resolve policies against a trusted resource catalog.
-    pytest.xfail("Symlink target containment requires catalog-aware authorization")
-    box.execute(Proposal("read", "legal/executed/alias.txt", "internal"))
+    # The policy cannot detect a symlink; the sandbox must fail closed.
+    with pytest.raises(ValueError, match="symlink"):
+        box.execute(Proposal("read", "legal/executed/alias.txt", "internal"))

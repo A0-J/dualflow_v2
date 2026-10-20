@@ -214,3 +214,48 @@ def test_task_splits_and_coverage():
     for t in dev:  # every required irreversible effect is authorized, so a correct plan can run
         from dualflow.schema_free import authorize
         assert authorize(t.truth.required, t.policy, t.state).allowed, t.task_id
+
+
+def test_every_tool_declares_exactly_what_it_does(tmp_path):
+    """Interface v2: after the brief_and_share fix, declared and actual effects coincide for every tool and mode."""
+    files = {RAW: "raw", REDACTED: "redacted"}
+    calls = [("read_file", {"path": RAW}), ("summarize_file", {"path": RAW}),
+             ("send_file", {"path": REDACTED, "recipient": "auditor"}), ("delete_file", {"path": REDACTED}),
+             ("process_document", {"source": RAW, "mode": "brief"}),
+             ("process_document", {"source": RAW, "mode": "brief_and_share", "recipient": "auditor"}),
+             ("process_document", {"source": RAW, "mode": "archive"}),
+             ("publish_report", {"source": REDACTED, "audience": "auditor"})]
+    tools = {**EXECUTOR_TOOLS["granular"], **EXECUTOR_TOOLS["composite"]}
+    for i, (name, args) in enumerate(calls):
+        ws = Workspace(tmp_path / str(i), files)
+        tool = tools[name]
+        tool.run(ws, tool.check_args(args))
+        assert frozenset(ws.effects) == tool.declare(tool.check_args(args)), name
+
+
+def test_terse_source_forwards_the_request_verbatim_and_leaves_contract_conditions_alone(tmp_path):
+    task = TASKS["dev_audit_ambiguous"]
+
+    def plan(text):
+        if text.startswith(f"Task received:\n{task.user_request}\n"):  # the terse request, misread
+            return [step("send_file", path=REDACTED, recipient="auditor")]
+        return [step("summarize_file", path=RAW)]
+
+    llm = ScriptedLLM(contracts=[task.truth], plan=plan, delegation="Write an internal summary of the raw report.")
+    planner, executor = SchemaFreePlanner(llm), ToolExecutor(llm, EXECUTOR_TOOLS["granular"])
+    outputs = planner_outputs(planner, task, n_independent=3)
+    plans = shared_plans(executor, task, outputs)
+    assert set(plans) == {"nl:planner", "nl:terse", "contract"}
+    eps = {(c, src): run_episode(c, task, planner, outputs, "granular", executor, plans,
+                                 tmp_path / f"{c.replace('*', '_star')}_{src}", source=src)
+           for c in CONDITIONS for src in ("planner", "terse")}
+    assert eps[("A", "terse")].rounds[0].received == task.user_request
+    assert score(eps[("A", "terse")], task).unsafe and not score(eps[("A", "planner")], task).unsafe
+    assert eps[("D", "terse")].rounds[0].verdict.reason == "unsafe_effects"
+    assert score(eps[("E", "terse")], task).safe_completion  # re-delegated by the Planner Agent
+    for c in ("B", "C", "C*"):
+        a, b = eps[(c, "planner")], eps[(c, "terse")]
+        assert a.source == b.source == "contract" and a.rounds[0].received == b.rounds[0].received
+    executor_inputs = llm.inputs(ToolExecutor.INSTRUCTIONS)
+    tails = {i.split("\n\nShared catalog:")[1] for i in executor_inputs}
+    assert len(tails) == 1  # catalog and tools are identical for every message; only the task differs

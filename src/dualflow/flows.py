@@ -29,6 +29,31 @@ def _norm(value: Any) -> str:
     return " ".join(str(value or "").strip().lower().split())
 
 
+def safe_resource_path(resource: str) -> bool:
+    """Strict portable resource identifier: no aliasing or path traversal.
+
+    Resolve no untrusted filesystem path during authorization: reject all dot
+    segments, absolute paths, backslashes, and empty path segments instead.
+    """
+    return (
+        bool(resource)
+        and not resource.startswith("/")
+        and "\\" not in resource
+        and "\x00" not in resource
+        and all(segment not in ("", ".", "..") for segment in resource.split("/"))
+    )
+
+
+def resource_under_prefix(resource: str, prefix: str) -> bool:
+    """Match whole path segments, never a string-prefix lookalike."""
+    root = prefix.rstrip("/")
+    return (
+        safe_resource_path(resource)
+        and safe_resource_path(root)
+        and (resource == root or resource.startswith(root + "/"))
+    )
+
+
 @dataclass(frozen=True)
 class Proposal:
     action: str
@@ -115,7 +140,7 @@ def authorization_flow(proposal: Proposal, policy: AuthorizationPolicy,
     p = proposal.canonical()
     if p.action not in policy.allowed_actions:
         return AuthorizationVerdict(False, "action_not_granted")
-    if not any(p.resource.startswith(prefix) for prefix in policy.resource_prefixes):
+    if not any(resource_under_prefix(p.resource, prefix) for prefix in policy.resource_prefixes):
         return AuthorizationVerdict(False, "resource_not_granted")
     if p.scope not in policy.allowed_scopes:
         return AuthorizationVerdict(False, "scope_not_granted")

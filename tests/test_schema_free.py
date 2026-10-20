@@ -210,8 +210,8 @@ def test_task_splits_and_coverage():
     assert len({t.task_id for t in dev}) == len(dev) and all(t.split == "dev" for t in dev)
     for domain in ("audit", "hr"):
         assert {t.kind for t in dev if t.task_id.startswith(f"dev_{domain}_")} == set(tasks_mod.KINDS)
-    with pytest.raises(SystemExit):
-        tasks_mod.tasks("main")
+    main = tasks_mod.tasks("main")
+    assert all(t.split == "main" for t in main) and not {t.task_id for t in main} & {t.task_id for t in dev}
     for t in dev:  # every required irreversible effect is authorized, so a correct plan can run
         from dualflow.schema_free import authorize
         assert authorize(t.truth.required, t.policy, t.state).allowed, t.task_id

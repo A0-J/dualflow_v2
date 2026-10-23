@@ -100,6 +100,18 @@ how often a retry or a new d repeats the same error. Block is not a success if i
   the unit: repeated runs of a task are not new problems. An exploratory external validation; whether
   more evaluation is needed follows from the effect sizes and intervals observed.
 
+## F1 deviations
+
+- The F1 run (e00efc9) gave the recipient extractor only the recipient ids, not their
+  descriptions, although the protocol says it sees the catalog's recipients. With neutral ids it
+  could not tell the contacts apart (63 of 180 neutral-id readings changed once descriptions were
+  given; 179 of 180 descriptive-id readings did not). `f1_reextract.py` re-ran only the extraction,
+  same prompt and model, over the stored delegations; the Planner Agent's outputs are unchanged and
+  the first extraction is kept in each record. Results use `runs_reextracted.jsonl`.
+- The facts probe expected "must not receive: none" when the prohibition names content the file
+  lacks. The Planner Agent named the other recipient in all 48 such samples; this is reported as an
+  over-applied prohibition, not as a reading error.
+
 ## Order
 
 1. Commit the evaluation results (`EVAL_RESULTS.md`, deviations in `EVAL_PLAN.md`).

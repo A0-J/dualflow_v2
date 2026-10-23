@@ -150,7 +150,7 @@ def run(args) -> None:
         rec = lambda stage, k, res: {"type": "output", "task_id": t.task_id, "stage": stage, "sample": k, **res}  # noqa: E731
 
         def extract(d: str) -> dict:
-            return ask(extractor, EXTRACT, {"delegation_message": d, "recipients": ids_list(t)},
+            return ask(extractor, EXTRACT, {"delegation_message": d, "recipients": dict(t.recipients)},
                        lambda x: parse_extract(x, ids_list(t)))
 
         for k in range(SAMPLES["pipeline"]):

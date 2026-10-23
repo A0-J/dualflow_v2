@@ -74,4 +74,13 @@ correctly? The checker never sees the user request, the private context or the g
 
 ## Deviations
 
-(none yet)
+- The final freeze (d90900a) and the delegation labels (89f091f) were committed by the assistant
+  at the user's request; the labels were committed before any checker run, and every checker run
+  records commit 89f091f (clean) and the labels' hash.
+- `check_consistency.py`'s own end-of-run summary failed on the evaluation tasks (its downstream
+  check builds tool plans with `realize()`, which has no tools for anonymized, archive or in-place
+  outputs). The records were complete; the analysis is `eval_consistency.py`, as planned. Not fixed
+  before reporting.
+- The primary checker (gpt-4o-mini) gave 15 unparseable outputs on the mutations (after four
+  attempts each), mostly on substitutions: it rewrote the mutated effect when copying it. The fixed
+  rule counts them as held; detection by the checker's own judgements is reported alongside.
